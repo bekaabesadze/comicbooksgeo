@@ -1489,7 +1489,7 @@ export default function Home() {
             isPublished: !!raw.isPublished,
             isSchoolMaterial: !!raw.isSchoolMaterial,
             grade: (typeof raw.grade === 'number' ? raw.grade : null),
-            coverUrl: typeof raw.coverUrl === 'string' ? raw.coverUrl : null,
+            coverUrl: typeof raw.coverUrl === 'string' ? raw.coverUrl : undefined,
             firstPageUrl,
             updatedAt,
             views: typeof raw.views === 'number' ? raw.views : 0,
