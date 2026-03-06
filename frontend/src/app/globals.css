@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'BPGNino';
+  src: url('/fonts/bpg_nino_mtavruli_bold.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Georgian comic text – used for all typed and pasted comic content */
+@font-face {
+  font-family: 'GeoText';
+  src: url('/fonts/geo_text.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BPGNinoNormal';
+  src: url('/fonts/normal.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BPGNinoTall';
+  src: url('/fonts/tall.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BPGNinoEnd';
+  src: url('/fonts/end.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BPGNinoSquare';
+  src: url('/fonts/square.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-book {
+  font-family: 'BPGNinoNormal', system-ui, sans-serif !important;
+}
+
+/* Georgian comic text – same font for typing and pasting */
+.font-geo-text {
+  font-family: 'GeoText', 'BPGNinoNormal', system-ui, sans-serif !important;
+}
+
+.font-chapter {
+  font-family: 'BPGNinoTall', system-ui, sans-serif !important;
+}
+
+.font-end {
+  font-family: 'BPGNinoEnd', system-ui, sans-serif !important;
+}
+
+.font-hero {
+  font-family: 'BPGNinoSquare', system-ui, sans-serif !important;
+}
+
+.font-bubble {
+  font-family: 'BPGNinoTall', system-ui, sans-serif !important;
+}
+
+@theme {
+  --color-neutral-950: #0a0a0a;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+}
+
+body {
+  font-family: 'BPGNino', system-ui, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Global resets for form elements to ensure font inheritance */
+input,
+textarea {
+  font-family: 'GeoText', 'BPGNinoNormal', system-ui, sans-serif !important;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+button,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-1rem);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-duration: 300ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.zoom-in-95 {
+  animation-name: zoomIn;
+}
+
+.slide-in-from-bottom-4 {
+  animation-name: slideInFromBottom;
+}
+
+.slide-in-from-left-4 {
+  animation-name: slideInFromLeft;
+}
+
+/* Custom view transition for theme toggle */
+.theme-transition::view-transition-old(root),
+.theme-transition::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+.theme-transition::view-transition-old(root) {
+  z-index: 1;
+}
+
+.theme-transition::view-transition-new(root) {
+  z-index: 9999;
+}

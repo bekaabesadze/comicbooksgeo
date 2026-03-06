@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+    }
+
+    match /comics/{comicId} {
+      allow read: if resource.data.get('isPublished', false) == true || isAdmin();
+      
+      allow update: if (request.resource.data.diff(resource.data).affectedKeys() == ['views'].toSet() &&
+                        request.resource.data.views == resource.data.views + 1) ||
+                        isAdmin();
+                        
+      allow create, delete: if isAdmin();
+      
+      match /{subcollection=**} {
+        allow read: if get(/databases/$(database)/documents/comics/$(comicId)).data.get('isPublished', false) == true || isAdmin();
+        allow write: if isAdmin();
+      }
+    }
+
+    match /userReadingStats/{statId} {
+      allow read, write: if request.auth != null && (statId == request.auth.uid || statId.matches(request.auth.uid + ".*")) || isAdmin();
+    }
+
+    match /schools/{schoolId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /comicRequests/{requestId} {
+      allow create: if request.resource.data.keys().hasAll(['requesterName', 'comicTitle', 'bookAuthor', 'status', 'submittedAt'])
+                    && request.resource.data.requesterName is string
+                    && request.resource.data.requesterName.size() > 0 && request.resource.data.requesterName.size() <= 100
+                    && request.resource.data.comicTitle is string
+                    && request.resource.data.comicTitle.size() > 0 && request.resource.data.comicTitle.size() <= 200
+                    && request.resource.data.bookAuthor is string
+                    && request.resource.data.status == 'pending';
+      allow read, update, delete: if isAdmin(); 
+    }
+  }
+}
