@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
+import { getAllComicsSecurely } from '@/app/actions/comicMetadata';
 import { X, Loader2, BookOpen, Globe, Sun, Moon, Search, Users, Heart, LogIn, LogOut, Eye, Info, ArrowLeft, CheckCircle2, Send } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -127,7 +128,7 @@ function sanitizeReaderBlocks(rawBlocks: unknown, validCharacterIds: Set<string>
 // ─── Comic Reader Modal ────────────────────────────────────────────────────────
 function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () => void }) {
   const { t, language } = useLanguage();
-  const { theme } = useTheme();
+  const { theme, isMobileOptimized } = useTheme();
   const [blocks, setBlocks] = useState<ComicBlock[]>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [showCharacters, setShowCharacters] = useState(false);
@@ -183,14 +184,14 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
     return String(blocks[matchIndex].id || matchIndex);
   }, [blocks, normalizeBlockId]);
 
-  const scrollToBlock = useCallback((blockId: string, behavior: ScrollBehavior = 'smooth') => {
+  const scrollToBlock = useCallback((blockId: string, behavior: ScrollBehavior = isMobileOptimized ? 'auto' : 'smooth') => {
     const safeBlockId = normalizeBlockId(blockId);
     if (!safeBlockId) return;
     const el = document.getElementById(`block-${safeBlockId}`);
     if (el && scrollContainerRef.current) {
       el.scrollIntoView({ behavior, block: 'start' });
     }
-  }, [normalizeBlockId]);
+  }, [isMobileOptimized, normalizeBlockId]);
 
   const closeHotspotCard = useCallback(() => {
     setActiveHotspotKey(null);
@@ -601,10 +602,10 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-8 overflow-hidden transition-all duration-300"
+      className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-8 overflow-hidden transition-colors duration-300"
       style={{
-        backdropFilter: 'blur(16px)',
-        backgroundColor: isDark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.7)'
+        backdropFilter: isMobileOptimized ? 'none' : 'blur(16px)',
+        backgroundColor: isDark ? (isMobileOptimized ? 'rgba(0,0,0,0.95)' : 'rgba(0,0,0,0.85)') : (isMobileOptimized ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)')
       }}
       onClick={(e) => {
         e.preventDefault();
@@ -615,13 +616,13 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
       <div className="w-full max-w-5xl h-[calc(100vh-64px)] flex flex-col lg:flex-row gap-4 lg:gap-6 justify-center" onClick={e => e.stopPropagation()}>
         {/* Main Reader Wrapper */}
         <div
-          className={`relative w-full lg:max-w-2xl h-full flex flex-col rounded-2xl overflow-hidden border shadow-2xl transition-all duration-300 shrink-0 ${isDark
+          className={`relative w-full lg:max-w-2xl h-full flex flex-col rounded-2xl overflow-hidden border shadow-2xl transition-colors duration-300 shrink-0 ${isDark
             ? 'bg-[#0d0d0d] border-neutral-800'
             : 'bg-white border-neutral-200'
             }`}
         >
           {/* Header */}
-          <div className={`flex items-center justify-between px-6 py-4 border-b backdrop-blur-md shrink-0 transition-colors ${isDark
+          <div className={`flex items-center justify-between px-6 py-4 border-b mobile-surface-blur-soft shrink-0 transition-colors ${isDark
             ? 'border-neutral-800 bg-[#0d0d0d]/95'
             : 'border-neutral-100 bg-white/95'
             }`}>
@@ -637,12 +638,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                         e.stopPropagation();
                         setShowChapters(true);
                       }}
-                      className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-300 active:scale-95 shadow-sm group/chap ${isDark
+                      className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors duration-200 active:scale-95 shadow-sm group/chap ${isDark
                         ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/40'
                         : 'bg-blue-600/5 border-blue-600/10 text-blue-600 hover:bg-blue-600/10 hover:border-blue-600/30'
                         }`}
                     >
-                      <BookOpen className="w-3.5 h-3.5 group-hover/chap:scale-110 transition-transform duration-300" />
+                      <BookOpen className="w-3.5 h-3.5 group-hover/chap:scale-110 transition-transform duration-200" />
                       <span className="text-[10px] font-black uppercase tracking-widest">{t.chapters}</span>
                     </button>
                   )}
@@ -653,12 +654,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                         e.stopPropagation();
                         setShowCharacters(true);
                       }}
-                      className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-300 active:scale-95 shadow-sm group/char ${isDark
+                      className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors duration-200 active:scale-95 shadow-sm group/char ${isDark
                         ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/40'
                         : 'bg-blue-600/5 border-blue-600/10 text-blue-600 hover:bg-blue-600/10 hover:border-blue-600/30'
                         }`}
                     >
-                      <Users className="w-3.5 h-3.5 group-hover/char:scale-110 transition-transform duration-300" />
+                      <Users className="w-3.5 h-3.5 group-hover/char:scale-110 transition-transform duration-200" />
                       <span className="text-[10px] font-black uppercase tracking-widest">{t.characters}</span>
                     </button>
                   )}
@@ -667,12 +668,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                       e.stopPropagation();
                       setShowDescription(true);
                     }}
-                    className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-300 active:scale-95 shadow-sm group/desc ${isDark
+                    className={`lg:hidden shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-colors duration-200 active:scale-95 shadow-sm group/desc ${isDark
                       ? 'bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/40'
                       : 'bg-blue-600/5 border-blue-600/10 text-blue-600 hover:bg-blue-600/10 hover:border-blue-600/30'
                       }`}
                   >
-                    <Info className="w-3.5 h-3.5 group-hover/desc:scale-110 transition-transform duration-300" />
+                    <Info className="w-3.5 h-3.5 group-hover/desc:scale-110 transition-transform duration-200" />
                     <span className="text-[10px] font-black uppercase tracking-widest">{t.description || 'Description'}</span>
                   </button>
                 </div>
@@ -685,7 +686,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                 e.stopPropagation();
                 onClose();
               }}
-              className={`absolute top-4 right-4 p-2 rounded-full transition-all duration-300 active:scale-90 z-20 ${isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900'
+              className={`absolute top-4 right-4 p-2 rounded-full transition-colors duration-200 active:scale-90 z-20 ${isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900'
                 }`}
             >
               <X className="w-5 h-5" />
@@ -693,7 +694,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
           </div>
 
           {/* Scrollable content */}
-          <div ref={scrollContainerRef} className={`overflow-y-auto overflow-x-hidden flex-1 scroll-smooth ${isDark ? 'bg-black/20' : 'bg-neutral-50'}`}>
+          <div ref={scrollContainerRef} className={`overflow-y-auto overflow-x-hidden flex-1 ${isMobileOptimized ? '' : 'scroll-smooth'} ${isDark ? 'bg-black/20' : 'bg-neutral-50'}`}>
             {loading ? (
               <div className="flex flex-col items-center justify-center py-24 gap-4 text-neutral-500">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -711,12 +712,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                     <button
                       key={chap.id}
                       onClick={() => scrollToChapter(chap.id)}
-                      className={`group w-full min-w-0 text-left px-4 py-4 sm:px-5 rounded-2xl border-2 transition-all duration-300 flex items-center gap-4 sm:gap-5 ${currentChapterId === chap.id
+                      className={`group w-full min-w-0 text-left px-4 py-4 sm:px-5 rounded-2xl border-2 transition-colors duration-200 flex items-center gap-4 sm:gap-5 ${currentChapterId === chap.id
                         ? isDark ? 'bg-blue-500/10 border-blue-500/30' : 'bg-blue-50 border-blue-200'
                         : isDark ? 'bg-neutral-900/50 border-neutral-800' : 'bg-white border-neutral-100'
                         } active:scale-[0.99]`}
                     >
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black shrink-0 transition-all duration-300 ${currentChapterId === chap.id
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-black shrink-0 transition-colors duration-200 ${currentChapterId === chap.id
                         ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
                         : isDark ? 'bg-neutral-800 text-neutral-400 group-hover:bg-neutral-700 group-hover:text-white' : 'bg-neutral-100 text-neutral-500 group-hover:bg-neutral-200'
                         }`}>
@@ -738,12 +739,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                         )}
                       </div>
 
-                      <div className={`w-20 sm:w-24 aspect-video rounded-lg flex items-center justify-center overflow-hidden shrink-0 border transition-all duration-300 ${currentChapterId === chap.id
+                      <div className={`w-20 sm:w-24 aspect-video rounded-lg flex items-center justify-center overflow-hidden shrink-0 border transition-colors duration-200 ${currentChapterId === chap.id
                         ? 'ring-2 ring-blue-500 shadow-lg shadow-blue-500/20 border-blue-500/50'
                         : isDark ? 'bg-neutral-800 border-neutral-700' : 'bg-neutral-100 border-neutral-200'
                         }`}>
                         {chap.previewUrl ? (
-                          <img src={chap.previewUrl} alt="" className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-500" />
+                          <img src={chap.previewUrl} alt="" className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-300" />
                         ) : (
                           <div className={`w-full h-full flex items-center justify-center text-xs font-black uppercase tracking-wide ${currentChapterId === chap.id ? 'bg-blue-500 text-white' : isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                             {t.chapter || 'Chapter'} {idx + 1}
@@ -764,7 +765,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                       }
                     }, 100);
                   }}
-                  className={`group w-full py-5 rounded-3xl font-black uppercase tracking-widest text-sm transition-all duration-500 bg-blue-600 hover:bg-blue-500 text-white shadow-2xl shadow-blue-600/30 flex items-center justify-center gap-4 active:scale-95`}
+                  className={`group w-full py-5 rounded-3xl font-black uppercase tracking-widest text-sm transition-colors duration-300 bg-blue-600 hover:bg-blue-500 text-white shadow-2xl shadow-blue-600/30 flex items-center justify-center gap-4 active:scale-95`}
                 >
                   <BookOpen className="w-6 h-6 group-hover:rotate-12 transition-transform" />
                   {t.resumeReading}
@@ -787,7 +788,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                       id={`block-${blockId}`}
                       data-block-id={blockId}
                       data-chapter-id={block.chapterTitle ? (block.id || `block_${i}`) : undefined}
-                      className={`group/panel relative rounded-2xl shadow-xl transition-colors duration-300 ${isChapterlessBook ? 'overflow-visible' : 'overflow-hidden'} ${isDark
+                      className={`comic-block comic-card-item group/panel relative rounded-2xl shadow-xl transition-colors duration-200 ${isChapterlessBook ? 'overflow-visible' : 'overflow-hidden'} ${isDark
                         ? 'bg-neutral-900/50 border border-neutral-800/50'
                         : 'bg-white border border-neutral-200'
                         }`}
@@ -801,7 +802,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                       )}
 
                       {isChapterlessBook && (
-                        <div className={`absolute -left-3 top-4 z-30 transition-all duration-300 ${isCheckedPage
+                        <div className={`absolute -left-3 top-4 z-30 transition-opacity duration-200 ${isCheckedPage
                           ? 'opacity-100 translate-x-0 pointer-events-auto'
                           : isActiveBlock
                             ? 'opacity-55 translate-x-0 pointer-events-auto'
@@ -811,7 +812,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                             onClick={() => saveCheckedPage(blockId)}
                             disabled={isSavingThisPage}
                             aria-label={isCheckedPage ? t.checked : t.checkThisPage}
-                            className={`relative h-7 w-7 rounded-full border flex items-center justify-center transition-all duration-300 active:scale-95 ${isCheckedPage
+                            className={`relative h-7 w-7 rounded-full border flex items-center justify-center transition-colors duration-200 active:scale-95 ${isCheckedPage
                               ? 'bg-blue-600 border-blue-600 text-white'
                               : isDark
                                 ? 'bg-transparent border-blue-500/35 text-blue-300/70 hover:border-blue-400/60 hover:text-blue-200'
@@ -819,9 +820,9 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                               }`}
                           >
                             {shouldPulse && (
-                              <span className="absolute inset-0 rounded-full bg-blue-400/30 animate-ping" />
+                              <span className="absolute inset-0 rounded-full bg-blue-400/20 ring-2 ring-blue-400/40" />
                             )}
-                            <CheckCircle2 className={`relative z-10 w-3.5 h-3.5 transition-transform duration-300 ${isCheckedPage ? 'scale-110' : ''}`} />
+                            <CheckCircle2 className={`relative z-10 w-3.5 h-3.5 transition-transform duration-200 ${isCheckedPage ? 'scale-110' : ''}`} />
                           </button>
                         </div>
                       )}
@@ -853,6 +854,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                               alt={`Panel ${i + 1}`}
                               className="w-full h-auto block object-contain"
                               loading="lazy"
+                              decoding="async"
                             />
                             {/* Watermark */}
                             <img
@@ -873,7 +875,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                                   type="button"
                                   onClick={() => toggleHotspot(blockId, hotspot)}
                                   aria-label={linkedCharacter.name || 'Character hotspot'}
-                                  className={`absolute rounded-full bg-transparent border border-transparent focus:outline-none transition-all duration-300 ${isActiveHotspot
+                                  className={`absolute rounded-full bg-transparent border border-transparent focus:outline-none transition-colors duration-200 ${isActiveHotspot
                                     ? (isDark
                                       ? 'ring-2 ring-blue-400/80 ring-offset-2 ring-offset-black/40'
                                       : 'ring-2 ring-blue-500/80 ring-offset-2 ring-offset-neutral-50')
@@ -953,7 +955,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                     {currentChapterIndex > 0 ? (
                       <button
                         onClick={() => goToChapter(currentChapterIndex - 1)}
-                        className={`flex-1 w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all duration-300 border-2 ${isDark
+                        className={`flex-1 w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-colors duration-200 border-2 ${isDark
                           ? 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-600'
                           : 'bg-white border-neutral-100 text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 shadow-sm'
                           }`}
@@ -966,7 +968,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                     {currentChapterIndex < chapters.length - 1 ? (
                       <button
                         onClick={() => goToChapter(currentChapterIndex + 1)}
-                        className="flex-[1.5] w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-black uppercase tracking-widest text-sm transition-all duration-300 bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-500/20 active:scale-95 group"
+                        className="flex-[1.5] w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-black uppercase tracking-widest text-sm transition-colors duration-200 bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-500/20 active:scale-95 group"
                       >
                         {t.nextChapter}: {chapters[currentChapterIndex + 1].title}
                         <ArrowLeft className="w-5 h-5 rotate-180 group-hover:translate-x-1 transition-transform" />
@@ -1025,12 +1027,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
             {/* Description Button */}
             <button
               onClick={() => setShowDescription(true)}
-              className={`group flex items-center gap-4 p-4 rounded-3xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-xl ${isDark
+              className={`group flex items-center gap-4 p-4 rounded-3xl border-2 transition-colors duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-xl ${isDark
                 ? 'bg-[#0d0d0d]/80 border-neutral-800 hover:border-blue-500/50 hover:bg-neutral-900 shadow-black/50'
                 : 'bg-white/80 border-neutral-200 hover:border-blue-400 hover:bg-blue-50 shadow-blue-900/5'
                 }`}
             >
-              <div className={`p-3 rounded-2xl transition-colors duration-300 ${isDark ? 'bg-blue-500/20 text-blue-400 group-hover:bg-blue-500 group-hover:text-white' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}>
+              <div className={`p-3 rounded-2xl transition-colors duration-200 ${isDark ? 'bg-blue-500/20 text-blue-400 group-hover:bg-blue-500 group-hover:text-white' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}>
                 <Info className="w-7 h-7" />
               </div>
               <span className={`font-black uppercase tracking-widest text-base transition-colors ${isDark ? 'text-neutral-300 group-hover:text-white' : 'text-neutral-700 group-hover:text-neutral-900'}`}>
@@ -1042,12 +1044,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
             {hasChapters && (
               <button
                 onClick={() => setShowChapters(true)}
-                className={`group flex items-center gap-4 p-4 rounded-3xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-xl ${isDark
+                className={`group flex items-center gap-4 p-4 rounded-3xl border-2 transition-colors duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-xl ${isDark
                   ? 'bg-[#0d0d0d]/80 border-neutral-800 hover:border-indigo-500/50 hover:bg-neutral-900 shadow-black/50'
                   : 'bg-white/80 border-neutral-200 hover:border-indigo-400 hover:bg-indigo-50 shadow-indigo-900/5'
                   }`}
               >
-                <div className={`p-3 rounded-2xl transition-colors duration-300 ${isDark ? 'bg-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white' : 'bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'}`}>
+                <div className={`p-3 rounded-2xl transition-colors duration-200 ${isDark ? 'bg-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white' : 'bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'}`}>
                   <BookOpen className="w-7 h-7" />
                 </div>
                 <span className={`font-black uppercase tracking-widest text-base transition-colors ${isDark ? 'text-neutral-300 group-hover:text-white' : 'text-neutral-700 group-hover:text-neutral-900'}`}>
@@ -1060,12 +1062,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
             {characters.length > 0 && (
               <button
                 onClick={() => setShowCharacters(true)}
-                className={`group flex items-center gap-4 p-4 rounded-3xl border-2 transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-xl ${isDark
+                className={`group flex items-center gap-4 p-4 rounded-3xl border-2 transition-colors duration-200 hover:scale-[1.02] active:scale-95 shadow-md hover:shadow-xl ${isDark
                   ? 'bg-[#0d0d0d]/80 border-neutral-800 hover:border-emerald-500/50 hover:bg-neutral-900 shadow-black/50'
                   : 'bg-white/80 border-neutral-200 hover:border-emerald-400 hover:bg-emerald-50 shadow-emerald-900/5'
                   }`}
               >
-                <div className={`p-3 rounded-2xl transition-colors duration-300 ${isDark ? 'bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white' : 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'}`}>
+                <div className={`p-3 rounded-2xl transition-colors duration-200 ${isDark ? 'bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white' : 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'}`}>
                   <Users className="w-7 h-7" />
                 </div>
                 <span className={`font-black uppercase tracking-widest text-base transition-colors ${isDark ? 'text-neutral-300 group-hover:text-white' : 'text-neutral-700 group-hover:text-neutral-900'}`}>
@@ -1075,9 +1077,9 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
             )}
 
             {/* Active Hotspot Character Card (Desktop) */}
-            <div className={`overflow-hidden transition-all duration-300 ${activeHotspotCharacter ? 'max-h-[420px] opacity-100 translate-y-0 mt-1' : 'max-h-0 opacity-0 -translate-y-2 pointer-events-none'}`}>
+            <div className={`overflow-hidden transition-[max-height,opacity] duration-200 ${activeHotspotCharacter ? 'max-h-[420px] opacity-100 translate-y-0 mt-1' : 'max-h-0 opacity-0 -translate-y-2 pointer-events-none'}`}>
               {activeHotspotCharacter && (
-                <div className={`rounded-3xl border-2 p-4 shadow-xl transition-all duration-300 ${isDark
+                <div className={`rounded-3xl border-2 p-4 shadow-xl transition-colors duration-200 ${isDark
                   ? 'bg-[#0d0d0d]/90 border-blue-500/30'
                   : 'bg-white/95 border-blue-200'
                   }`}>
@@ -1128,17 +1130,17 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
           onClick={e => e.stopPropagation()}
         >
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+            className="absolute inset-0 bg-black/60 backdrop-blur-md mobile-surface-blur transition-opacity duration-300 animate-in fade-in"
             onClick={() => setShowDescription(false)}
           />
           <div
-            className={`relative w-full max-w-lg max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark
+            className={`relative w-full max-w-lg max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-colors duration-200 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark
               ? 'bg-[#0a0a0a] border-neutral-800 text-white'
               : 'bg-white border-neutral-200 text-neutral-900'
               }`}
             onClick={e => e.stopPropagation()}
           >
-            <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl z-10 transition-colors">
+            <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl mobile-surface-blur-soft z-10 transition-colors">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-600/10 text-blue-600'}`}>
                   <Info className="w-5 h-5" />
@@ -1150,7 +1152,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
               </div>
               <button
                 onClick={() => setShowDescription(false)}
-                className={`p-2 rounded-full transition-all duration-300 active:scale-90 ${isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900'}`}
+                className={`p-2 rounded-full transition-colors duration-200 active:scale-90 ${isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900'}`}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1177,17 +1179,17 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
           onClick={e => e.stopPropagation()}
         >
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+            className="absolute inset-0 bg-black/60 backdrop-blur-md mobile-surface-blur transition-opacity duration-300 animate-in fade-in"
             onClick={() => setShowCharacters(false)}
           />
           <div
-            className={`relative w-full max-w-lg max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark
+            className={`relative w-full max-w-lg max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-colors duration-200 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark
               ? 'bg-[#0a0a0a] border-neutral-800 text-white'
               : 'bg-white border-neutral-200 text-neutral-900'
               }`}
             onClick={e => e.stopPropagation()}
           >
-            <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl z-10 transition-colors">
+            <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl mobile-surface-blur-soft z-10 transition-colors">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-600/10 text-blue-600'}`}>
                   <Users className="w-5 h-5" />
@@ -1199,7 +1201,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
               </div>
               <button
                 onClick={() => setShowCharacters(false)}
-                className={`p-2 rounded-full transition-all duration-300 active:scale-90 ${isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900'}`}
+                className={`p-2 rounded-full transition-colors duration-200 active:scale-90 ${isDark ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900'}`}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1211,12 +1213,12 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                   className="flex gap-5 items-center group animate-in slide-in-from-left-4 fade-in"
                   style={{ animationDelay: `${idx * 100}ms` }}
                 >
-                  <div className={`relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-full overflow-hidden border-2 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3 shadow-lg ${isDark
+                  <div className={`relative w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-full overflow-hidden border-2 transition-colors duration-300 group-hover:scale-105 group-hover:rotate-3 shadow-lg ${isDark
                     ? 'border-neutral-800 bg-neutral-900'
                     : 'border-white bg-neutral-100'
                     }`}>
                     {char.imageUrl ? (
-                      <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      <img src={char.imageUrl} alt={char.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-neutral-400">
                         <Users className="w-8 h-8 opacity-20" />
@@ -1244,17 +1246,17 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
           onClick={e => e.stopPropagation()}
         >
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+            className="absolute inset-0 bg-black/60 backdrop-blur-md mobile-surface-blur transition-opacity duration-300 animate-in fade-in"
             onClick={() => setShowChapters(false)}
           />
           <div
-            className={`relative w-full max-w-sm max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark
+            className={`relative w-full max-w-sm max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-colors duration-200 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark
               ? 'bg-[#0a0a0a] border-neutral-800 text-white'
               : 'bg-white border-neutral-200 text-neutral-900'
               }`}
             onClick={e => e.stopPropagation()}
           >
-            <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl z-10 transition-colors">
+            <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl mobile-surface-blur-soft z-10 transition-colors">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-600/10 text-blue-600'}`}>
                   <BookOpen className="w-5 h-5" />
@@ -1276,7 +1278,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                 <button
                   key={chap.id}
                   onClick={() => scrollToChapter(chap.id)}
-                  className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-300 flex items-center gap-4 group ${currentChapterId === chap.id
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-colors duration-200 flex items-center gap-4 group ${currentChapterId === chap.id
                     ? isDark
                       ? 'bg-blue-500/20 border border-blue-500/30 shadow-md shadow-blue-500/10'
                       : 'bg-blue-50 border border-blue-200 shadow-sm'
@@ -1312,9 +1314,9 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
       )}
 
       {/* Active Hotspot Character Card (Mobile) */}
-      <div className={`lg:hidden fixed inset-x-4 bottom-4 z-[70] transition-all duration-300 ${activeHotspotCharacter ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+      <div className={`lg:hidden fixed inset-x-4 bottom-4 z-[70] transition-[transform,opacity] duration-200 ${activeHotspotCharacter ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
         {activeHotspotCharacter && (
-          <div className={`rounded-2xl border shadow-2xl backdrop-blur-md overflow-hidden ${isDark ? 'bg-[#0a0a0a]/95 border-blue-500/30 text-white' : 'bg-white/95 border-blue-200 text-neutral-900'}`}>
+          <div className={`rounded-2xl border shadow-2xl backdrop-blur-md mobile-surface-blur-soft overflow-hidden ${isDark ? 'bg-[#0a0a0a]/95 border-blue-500/30 text-white' : 'bg-white/95 border-blue-200 text-neutral-900'}`}>
             <div className="px-4 py-3 flex items-start justify-between gap-3 border-b border-neutral-200/20">
               <div>
                 <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-blue-300' : 'text-blue-600'}`}>
@@ -1362,10 +1364,10 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
             e.stopPropagation();
           }}
         >
-          <div className={`flex items-center gap-2 py-2 px-3 sm:py-2.5 sm:px-4 rounded-full shadow-lg backdrop-blur-xl ${isDark
+          <div className={`flex items-center gap-2 py-2 px-3 sm:py-2.5 sm:px-4 rounded-full shadow-lg backdrop-blur-xl mobile-surface-blur-soft ${isDark
             ? 'bg-blue-500/10 border border-blue-500/20 text-blue-400'
             : 'bg-white/90 border border-blue-200 text-blue-600'
-            } group transition-all duration-300`}>
+            } group transition-colors duration-200`}>
             {/* The icon isn't imported so I will just use an SVG or import Clock at the top. Wait! I will use a simple circle timer icon SVG here to avoid another import chunk */}
             <svg
               className="w-4 h-4 sm:w-5 sm:h-5 animate-[spin_4s_linear_infinite] opacity-90"
@@ -1439,69 +1441,10 @@ export default function Home() {
     (async () => {
       setLoading(true);
       try {
-        const comicsQuery = query(
-          collection(db, 'comics'),
-          where('isPublished', '==', true)
-        );
-
-        const snapshot = await new Promise<Awaited<ReturnType<typeof getDocs>>>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Timed out while fetching comics.'));
-          }, 15000);
-
-          getDocs(comicsQuery)
-            .then((result) => {
-              clearTimeout(timeoutId);
-              resolve(result);
-            })
-            .catch((error) => {
-              clearTimeout(timeoutId);
-              reject(error);
-            });
-        });
-        const data: ComicData[] = snapshot.docs.map((docSnap) => {
-          const raw = docSnap.data() as Record<string, any>;
-
-          const updatedAt =
-            typeof raw.updatedAt?.toMillis === 'function'
-              ? raw.updatedAt.toMillis()
-              : (typeof raw.updatedAt === 'number' ? raw.updatedAt : 0);
-
-          let firstPageUrl: string | null = typeof raw.coverUrl === 'string' && raw.coverUrl.trim()
-            ? raw.coverUrl.trim()
-            : null;
-
-          if (!firstPageUrl && Array.isArray(raw.blocks) && raw.blocks.length > 0) {
-            const firstBlock = raw.blocks[0] || {};
-            firstPageUrl =
-              (typeof firstBlock?.croppedImageUrl === 'string' && firstBlock.croppedImageUrl.trim())
-                ? firstBlock.croppedImageUrl.trim()
-                : ((typeof firstBlock?.imageUrl === 'string' && firstBlock.imageUrl.trim())
-                  ? firstBlock.imageUrl.trim()
-                  : null);
-          }
-
-          return {
-            id: docSnap.id,
-            title: typeof raw.title === 'string' ? raw.title : '',
-            author: typeof raw.author === 'string' ? raw.author : '',
-            category: typeof raw.category === 'string' ? raw.category : '',
-            isPublished: !!raw.isPublished,
-            isSchoolMaterial: !!raw.isSchoolMaterial,
-            grade: (typeof raw.grade === 'number' ? raw.grade : null),
-            coverUrl: typeof raw.coverUrl === 'string' ? raw.coverUrl : undefined,
-            firstPageUrl,
-            updatedAt,
-            views: typeof raw.views === 'number' ? raw.views : 0,
-            description: typeof raw.description === 'string' ? raw.description : '',
-            blocks: [],
-          };
-        });
-
-        data.sort((a, b) => (Number(b.updatedAt || 0) - Number(a.updatedAt || 0)));
+        const data = await getAllComicsSecurely() as ComicData[];
         setComics(data);
       } catch (e) {
-        console.error('Failed to fetch published comics:', e);
+        console.error('Failed to fetch comics:', e);
         setComics([]);
       } finally {
         setLoading(false);
@@ -1588,13 +1531,13 @@ export default function Home() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 font-sans ${isDark ? 'bg-[#080c14] text-white' : 'bg-neutral-50 text-neutral-900'}`}>
+    <div className={`min-h-screen transition-colors duration-200 font-sans ${isDark ? 'bg-[#080c14] text-white' : 'bg-neutral-50 text-neutral-900'}`}>
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <header className={`absolute top-0 left-0 right-0 z-50 transition-all duration-500`}>
+      <header className={`absolute top-0 left-0 right-0 z-50 transition-colors duration-300`}>
         {/* Right Blur Gradient behind buttons */}
         <div className="absolute inset-y-0 right-0 w-96 pointer-events-none overflow-hidden">
-          <div className={`absolute inset-0 backdrop-blur-md ${isDark ? 'bg-black/50' : 'bg-white/40'}`}
+          <div className={`absolute inset-0 backdrop-blur-md mobile-surface-blur ${isDark ? 'bg-black/50' : 'bg-white/40'}`}
             style={{ maskImage: 'linear-gradient(to left, black 50%, transparent)' }} />
           {/* Fading Border Line */}
           <div className={`absolute bottom-0 left-0 right-0 h-px ${isDark ? 'bg-white/10' : 'bg-neutral-200/30'}`}
@@ -1605,7 +1548,7 @@ export default function Home() {
           <Link href="/" className="relative flex items-center gap-2.5 group px-1.5 py-1">
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute -inset-x-2 -inset-y-2 rounded-2xl backdrop-blur-sm"
+              className="pointer-events-none absolute -inset-x-2 -inset-y-2 rounded-2xl backdrop-blur-sm mobile-surface-blur-soft"
               style={{
                 background: 'linear-gradient(to top, rgba(0,0,0,0) 8%, rgba(0,0,0,0.16) 52%, rgba(0,0,0,0.12) 100%)',
                 maskImage: 'linear-gradient(to right, rgba(0,0,0,1) 84%, rgba(0,0,0,0.55) 95%, transparent 100%)',
@@ -1627,14 +1570,14 @@ export default function Home() {
             <button
               onClick={toggleTheme}
               aria-label="Toggle Theme"
-              className={`relative flex items-center w-[56px] h-[28px] rounded-full p-1 transition-all duration-500 shadow-xl backdrop-blur-md border focus:outline-none ${isDark
+              className={`relative flex items-center w-[56px] h-[28px] rounded-full p-1 transition-colors duration-300 mobile-fast-transition shadow-xl mobile-surface-blur-soft border focus:outline-none gpu-layer ${isDark
                 ? 'bg-[#0a0f1e] border-blue-900/50'
                 : 'bg-amber-50/80 border-amber-200/60'
                 }`}
             >
               {/* Sliding knob */}
               <span
-                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-[22px] h-[22px] rounded-full shadow-lg transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isDark
+                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-[22px] h-[22px] rounded-full shadow-lg transition-[left] duration-300 mobile-fast-transition ease-[cubic-bezier(0.34,1.56,0.64,1)] gpu-layer ${isDark
                   ? 'left-1 bg-gradient-to-br from-slate-600 to-slate-800'
                   : 'left-[30px] bg-gradient-to-br from-amber-300 to-orange-400'
                   }`}
@@ -1656,7 +1599,7 @@ export default function Home() {
             <button
               onClick={() => setLanguage(language === 'ka' ? 'en' : 'ka')}
               aria-label="Toggle Language"
-              className={`relative flex items-center w-[64px] h-[28px] rounded-full p-1 transition-all duration-500 shadow-xl backdrop-blur-md border focus:outline-none ${isDark
+              className={`relative flex items-center w-[64px] h-[28px] rounded-full p-1 transition-colors duration-300 mobile-fast-transition shadow-xl mobile-surface-blur-soft border focus:outline-none ${isDark
                 ? 'bg-black/40 border-white/10'
                 : 'bg-white/40 border-black/10'
                 }`}
@@ -1666,7 +1609,7 @@ export default function Home() {
               <span className={`absolute top-1/2 -translate-y-1/2 right-2 text-[9px] font-black uppercase tracking-wider transition-all duration-300 ${language === 'en' ? 'opacity-0' : isDark ? 'opacity-40 text-neutral-400' : 'opacity-50 text-neutral-500'}`}>EN</span>
               {/* Sliding knob */}
               <span
-                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-[28px] h-[22px] rounded-full shadow-lg transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] bg-blue-600 text-white text-[9px] font-black uppercase tracking-wider ${language === 'ka' ? 'left-1' : 'left-[32px]'
+                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-[28px] h-[22px] rounded-full shadow-lg transition-[left] duration-300 mobile-fast-transition ease-[cubic-bezier(0.34,1.56,0.64,1)] bg-blue-600 text-white text-[9px] font-black uppercase tracking-wider gpu-layer ${language === 'ka' ? 'left-1' : 'left-[32px]'
                   }`}
               >
                 {language === 'ka' ? 'GE' : 'EN'}
@@ -1687,7 +1630,7 @@ export default function Home() {
                 <div className="relative">
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all duration-300 hover:scale-[1.02] active:scale-95 shadow-xl backdrop-blur-md ${isDark
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors duration-200 hover:scale-[1.02] active:scale-95 shadow-xl ${isDark
                       ? 'bg-black/40 border-white/10 hover:bg-black/60'
                       : 'bg-white/40 border-black/10 hover:border-neutral-300 shadow-sm'}`}
                   >
@@ -1787,7 +1730,7 @@ export default function Home() {
               ) : (
                 <button
                   onClick={signInWithGoogle}
-                  className={`flex items-center justify-center gap-2 text-xs font-bold py-1.5 w-[112px] rounded-full transition-all duration-300 border backdrop-blur-sm ${isDark
+                  className={`flex items-center justify-center gap-2 text-xs font-bold py-1.5 w-[112px] rounded-full transition-colors duration-200 border ${isDark
                     ? 'border-blue-500/30 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/50'
                     : 'bg-white border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 shadow-sm'
                     }`}
@@ -1828,19 +1771,19 @@ export default function Home() {
             className="w-full h-full object-cover object-[center_15%]"
           />
           {/* Dimming Overlay */}
-          <div className="absolute inset-0 bg-black/35 transition-opacity duration-500" />
+          <div className="absolute inset-0 bg-black/35 transition-opacity duration-300" />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex flex-col items-center text-center gap-6 w-full">
           <div className="max-w-3xl w-full">
             {/* Hero Title with soft text blur shadow */}
-            <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight text-white drop-shadow-[0_6px_20px_rgba(0,0,0,1)] font-hero hover:opacity-[0.05] transition-opacity duration-1000 ease-in-out cursor-default min-h-[90px] md:min-h-[150px] flex items-center justify-center">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight text-white drop-shadow-[0_6px_20px_rgba(0,0,0,1)] font-hero hover:opacity-[0.05] transition-opacity duration-500 ease-in-out cursor-default min-h-[90px] md:min-h-[150px] flex items-center justify-center">
               {t.heroTitle}
             </h1>
 
             {/* Search Bar Container with Blur & Shadow */}
             <div className={`mt-8 relative max-w-xl mx-auto group transition-all duration-300`}>
-              <div className="absolute inset-0 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl transition-all duration-300 group-focus-within:bg-white/15" />
+              <div className="absolute inset-0 bg-white/10 backdrop-blur-xl mobile-surface-blur rounded-3xl border border-white/20 shadow-2xl transition-colors duration-200 group-focus-within:bg-white/15" />
               <div className="relative">
                 <div className={`absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none`}>
                   <Search className={`w-6 h-6 text-white/70 group-focus-within:text-blue-400 transition-colors drop-shadow-sm`} />
@@ -1870,8 +1813,8 @@ export default function Home() {
       <section className="relative overflow-hidden">
         {/* Background Decorations */}
         <div className="absolute inset-0 z-0 pointer-events-none">
-          <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] opacity-[0.07] ${isDark ? 'bg-blue-500' : 'bg-blue-400/30'}`} />
-          <div className={`absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] opacity-[0.05] ${isDark ? 'bg-indigo-600' : 'bg-indigo-400/20'}`} />
+          <div className={`absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-[120px] opacity-[0.07] decorative-blur-blob ${isDark ? 'bg-blue-500' : 'bg-blue-400/30'}`} />
+          <div className={`absolute bottom-0 right-1/4 w-[800px] h-[800px] rounded-full blur-[150px] opacity-[0.05] decorative-blur-blob ${isDark ? 'bg-indigo-600' : 'bg-indigo-400/20'}`} />
           <div
             className={`absolute inset-0 opacity-[0.03] ${isDark ? 'text-blue-400' : 'text-blue-900'}`}
             style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '32px 32px' }}
@@ -1911,7 +1854,7 @@ export default function Home() {
                       setMaterialFilter(f.id as any);
                       if (f.id === 'non-school') setGradeFilter('all');
                     }}
-                    className={`relative px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 z-10 ${isActive
+                    className={`relative px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-colors duration-200 z-10 ${isActive
                       ? 'text-white'
                       : isDark ? 'text-neutral-500 hover:text-neutral-300' : 'text-neutral-500 hover:text-neutral-800'
                       }`}
@@ -1933,7 +1876,7 @@ export default function Home() {
             <div className="flex flex-wrap items-center gap-2 mt-2">
               <button
                 onClick={() => setGradeFilter('all')}
-                className={`relative px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 z-10 ${gradeFilter === 'all'
+                className={`relative px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors duration-200 z-10 ${gradeFilter === 'all'
                   ? 'text-white'
                   : isDark ? 'text-neutral-400 bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800' : 'text-neutral-600 bg-white hover:bg-neutral-50 border border-neutral-200'
                   }`}
@@ -1950,7 +1893,7 @@ export default function Home() {
                 <button
                   key={g}
                   onClick={() => setGradeFilter(g)}
-                  className={`relative px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all duration-300 z-10 ${gradeFilter === g
+                  className={`relative px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors duration-200 z-10 ${gradeFilter === g
                     ? 'text-white'
                     : isDark ? 'text-neutral-400 bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800' : 'text-neutral-600 bg-white hover:bg-neutral-50 border border-neutral-200'
                     }`}
@@ -2005,7 +1948,7 @@ export default function Home() {
                   >
                     {/* Cover card */}
                     <div
-                      className={`relative aspect-[3/4] rounded-xl overflow-hidden shadow-lg transition-all duration-500 ease-out ${isDraft
+                      className={`relative aspect-[3/4] rounded-xl overflow-hidden shadow-lg transition-transform duration-300 ease-out ${isDraft
                         ? `${isDark
                           ? 'border border-blue-500/40 shadow-[0_10px_30px_rgba(37,99,235,0.2)] group-hover:scale-[1.01] group-hover:shadow-[0_18px_40px_rgba(37,99,235,0.25)]'
                           : 'border border-blue-200 shadow-[0_10px_24px_rgba(37,99,235,0.15)] group-hover:scale-[1.01] group-hover:shadow-[0_16px_30px_rgba(37,99,235,0.18)]'
@@ -2018,7 +1961,8 @@ export default function Home() {
                           <img
                             src={comic.coverUrl || firstPageUrl}
                             alt={comic.title}
-                            className={`w-full h-full object-cover transition-all duration-700 ease-out ${isDraft ? 'opacity-100 saturate-100 group-hover:scale-[1.03]' : 'group-hover:scale-105'}`}
+                            className={`w-full h-full object-cover transition-transform duration-300 ease-out ${isDraft ? 'opacity-100 saturate-100 group-hover:scale-[1.03]' : 'group-hover:scale-105'}`}
+                            loading="lazy"
                           />
 
                           {/* Watermark on Cover */}
@@ -2037,7 +1981,7 @@ export default function Home() {
                           )}
                         </>
                       ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-950/60 to-[#080c14] relative group-hover:scale-105 transition-transform duration-700 ease-out">
+                        <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-950/60 to-[#080c14] relative group-hover:scale-105 transition-transform duration-300 ease-out">
                           <div className="absolute inset-3 grid grid-cols-2 grid-rows-2 gap-1 opacity-20">
                             {[...Array(4)].map((_, i) => <div key={i} className="border border-blue-700 rounded-sm" />)}
                           </div>
@@ -2113,7 +2057,7 @@ export default function Home() {
 
                     {/* Enhanced Info Board */}
                     <div className="flex flex-col gap-1 px-1">
-                      <h3 className={`font-black text-sm md:text-base leading-tight transition-colors duration-300 line-clamp-2 group-hover:text-blue-400 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                      <h3 className={`font-black text-sm md:text-base leading-tight transition-colors duration-200 line-clamp-2 group-hover:text-blue-400 ${isDark ? 'text-white' : 'text-neutral-900'}`}>
                         {comic.title}
                       </h3>
                       <div className="flex items-center gap-2">
@@ -2134,8 +2078,8 @@ export default function Home() {
       {/* Submit Request */}
       <section className="relative overflow-hidden py-16">
         <div className="absolute inset-0 pointer-events-none">
-          <div className={`absolute -top-32 -right-28 w-96 h-96 rounded-full blur-[100px] ${isDark ? 'bg-blue-500/15' : 'bg-blue-300/30'}`} />
-          <div className={`absolute -bottom-24 -left-24 w-[26rem] h-[26rem] rounded-full blur-[110px] ${isDark ? 'bg-cyan-500/10' : 'bg-cyan-300/35'}`} />
+          <div className={`absolute -top-32 -right-28 w-96 h-96 rounded-full blur-[100px] decorative-blur-blob ${isDark ? 'bg-blue-500/15' : 'bg-blue-300/30'}`} />
+          <div className={`absolute -bottom-24 -left-24 w-[26rem] h-[26rem] rounded-full blur-[110px] decorative-blur-blob ${isDark ? 'bg-cyan-500/10' : 'bg-cyan-300/35'}`} />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-6">

@@ -8,7 +8,7 @@ import {
     signOut as firebaseSignOut,
     onAuthStateChanged
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth, hasFirebasePublicConfig } from "@/lib/firebase";
 
 interface AuthContextType {
     user: User | null;
@@ -31,15 +31,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUser(user);
+        if (!hasFirebasePublicConfig) {
             setLoading(false);
-        });
+            return;
+        }
 
-        return () => unsubscribe();
+        try {
+            const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+                setUser(nextUser);
+                setLoading(false);
+            });
+
+            return () => unsubscribe();
+        } catch (error) {
+            console.error("Firebase auth initialization failed:", error);
+            setLoading(false);
+        }
     }, []);
 
     const signInWithGoogle = async () => {
+        if (!hasFirebasePublicConfig) {
+            console.error("Firebase public configuration is incomplete. Google sign-in is unavailable.");
+            return;
+        }
+
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
@@ -49,6 +64,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const signOut = async () => {
+        if (!hasFirebasePublicConfig) {
+            return;
+        }
+
         try {
             await firebaseSignOut(auth);
         } catch (error) {

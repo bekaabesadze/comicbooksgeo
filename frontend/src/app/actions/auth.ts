@@ -1,7 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { adminAuth } from '@/lib/firebase/admin';
+import { getAdminAuth } from '@/lib/firebase/admin';
 import { redirect } from 'next/navigation';
 import { isRedirectError } from 'next/dist/client/components/redirect-error';
 
@@ -18,6 +18,7 @@ export async function verifyAdminAccess(prevState: any, formData: FormData) {
     }
 
     try {
+        const adminAuth = getAdminAuth();
         const decodedToken = await adminAuth.verifyIdToken(idToken);
 
         if (decodedToken.admin === true) {

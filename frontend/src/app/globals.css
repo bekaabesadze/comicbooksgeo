@@ -97,6 +97,13 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* Global resets for form elements to ensure font inheritance */
 input,
 textarea {
@@ -196,4 +203,110 @@ select {
 
 .theme-transition::view-transition-new(root) {
   z-index: 9999;
+}
+
+/* ── Desktop: full blur ──────────────────────────────────── */
+.mobile-surface-blur {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.mobile-surface-blur-soft {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* GPU-promote elements that animate frequently */
+.gpu-layer {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Comic blocks use content-visibility for off-screen savings */
+@supports (content-visibility: auto) {
+  html.mobile-optimized .comic-block {
+    content-visibility: auto;
+    contain: layout paint style;
+    contain-intrinsic-size: 900px;
+  }
+}
+
+/* Paint-isolate comic cards in the grid */
+html.mobile-optimized .comic-card-item {
+  contain: layout style paint;
+}
+
+/* ── Mobile / Touch Optimizations ────────────────────────── */
+@media (hover: none),
+(max-width: 1024px) {
+
+  /* Kill ALL backdrop-blur on mobile — use solid bg instead */
+  html.mobile-optimized .mobile-surface-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  html.mobile-optimized .mobile-surface-blur-soft {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Cap every transition at 150ms on mobile */
+  html.mobile-optimized .mobile-fast-transition {
+    transition-duration: 150ms !important;
+  }
+
+  /* Shorten entry animations */
+  html.mobile-optimized .animate-in {
+    animation-duration: 150ms;
+  }
+
+  /* Kill infinite / continuous animations on mobile */
+  html.mobile-optimized .animate-ping,
+  html.mobile-optimized .animate-pulse {
+    animation: none !important;
+  }
+
+  html.mobile-optimized .animate-bounce {
+    animation-iteration-count: 3 !important;
+  }
+
+  /* Disable decorative background blur blobs on mobile */
+  html.mobile-optimized .decorative-blur-blob {
+    filter: none !important;
+    display: none !important;
+  }
+
+  /* Disable hover-only effects on touch */
+  html.mobile-optimized .group-hover\:scale-105,
+  html.mobile-optimized .group-hover\:scale-\[1\.02\],
+  html.mobile-optimized .group-hover\:scale-\[1\.03\] {
+    transform: none !important;
+  }
+}
+
+/* ── Tablet Optimizations (wider but still touch) ─────── */
+@media (hover: none) and (min-width: 1025px) {
+  html.mobile-optimized .mobile-surface-blur {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
+
+  html.mobile-optimized .mobile-surface-blur-soft {
+    backdrop-filter: blur(3px) !important;
+    -webkit-backdrop-filter: blur(3px) !important;
+  }
+}
+
+/* ── Reduced Motion (system-level preference) ────────── */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

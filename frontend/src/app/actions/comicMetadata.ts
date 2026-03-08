@@ -1,9 +1,10 @@
 'use server';
 
-import { adminDb } from '@/lib/firebase/admin';
+import { getAdminDb } from '@/lib/firebase/admin';
 
 export async function getComicMetadata(id: string) {
     try {
+        const adminDb = getAdminDb();
         const docSnap = await adminDb.collection('comics').doc(id).get();
         if (!docSnap.exists) return null;
 
@@ -26,6 +27,7 @@ export async function getComicMetadata(id: string) {
 
 export async function getAllComicsSecurely() {
     try {
+        const adminDb = getAdminDb();
         const snapshot = await adminDb.collection('comics').get();
 
         const comics = snapshot.docs.map(doc => {

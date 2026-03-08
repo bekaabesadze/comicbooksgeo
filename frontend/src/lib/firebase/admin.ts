@@ -51,7 +51,11 @@ function parseServiceAccountFromBase64(base64Value: string): admin.ServiceAccoun
     }
 }
 
-if (!admin.apps.length) {
+function ensureAdminApp() {
+    if (admin.apps.length) {
+        return admin.app();
+    }
+
     let credential: admin.credential.Credential;
     const b64Key = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_B64;
     const rawKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
@@ -79,12 +83,20 @@ if (!admin.apps.length) {
         throw new Error(`Failed to initialize Firebase Admin credential from ${source}: ${message}`);
     }
 
-    admin.initializeApp({
+    return admin.initializeApp({
         credential,
         projectId: process.env.FIREBASE_PROJECT_ID || 'comicbooksgeo'
     });
 }
 
-export const adminAuth = admin.auth();
-export const adminDb = admin.firestore();
-export const adminStorage = admin.storage();
+export function getAdminAuth() {
+    return ensureAdminApp().auth();
+}
+
+export function getAdminDb() {
+    return ensureAdminApp().firestore();
+}
+
+export function getAdminStorage() {
+    return ensureAdminApp().storage();
+}

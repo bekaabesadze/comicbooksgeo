@@ -1,11 +1,9 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+import { getApp, getApps, initializeApp } from "firebase/app";
+import type { Analytics } from "firebase/analytics";
+import type { FirebaseOptions } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -19,14 +17,56 @@ const firebaseConfig = {
     measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const requiredPublicFirebaseKeys = [
+    "apiKey",
+    "authDomain",
+    "projectId",
+    "storageBucket",
+    "messagingSenderId",
+    "appId",
+] as const;
 
-// We only initialize analytics in the browser
-let analytics;
-if (typeof window !== "undefined") {
-    analytics = getAnalytics(app);
+const missingPublicFirebaseKeys = requiredPublicFirebaseKeys.filter((key) => !firebaseConfig[key]);
+export const hasFirebasePublicConfig = missingPublicFirebaseKeys.length === 0;
+
+if (!hasFirebasePublicConfig) {
+    console.error(
+        `Missing Firebase public environment variables: ${missingPublicFirebaseKeys.join(", ")}`
+    );
 }
+
+function buildSafeFirebaseConfig(): FirebaseOptions {
+    return {
+        apiKey: firebaseConfig.apiKey || "missing-api-key",
+        authDomain: firebaseConfig.authDomain || "comicbooksgeo.local",
+        projectId: firebaseConfig.projectId || "comicbooksgeo-fallback",
+        storageBucket: firebaseConfig.storageBucket || "comicbooksgeo-fallback.appspot.com",
+        messagingSenderId: firebaseConfig.messagingSenderId || "000000000000",
+        appId: firebaseConfig.appId || "1:000000000000:web:fallback",
+        ...(firebaseConfig.measurementId ? { measurementId: firebaseConfig.measurementId } : {}),
+    };
+}
+
+const app = getApps().length ? getApp() : initializeApp(buildSafeFirebaseConfig());
+
+let analytics: Analytics | null = null;
+
+export const initAnalytics = async () => {
+    if (analytics || typeof window === "undefined" || !firebaseConfig.measurementId) {
+        return analytics;
+    }
+
+    try {
+        const { isSupported, getAnalytics } = await import("firebase/analytics");
+        if (await isSupported()) {
+            analytics = getAnalytics(app);
+        }
+    } catch (error) {
+        console.error("Firebase analytics initialization failed:", error);
+    }
+
+    return analytics;
+};
 
 export const db = getFirestore(app);
 export const storage = getStorage(app);

@@ -117,7 +117,7 @@ function sanitizeReaderBlocks(rawBlocks: unknown, validCharacterIds: Set<string>
 
 export default function ReaderPage({ params }: { params: Promise<{ id: string }> }) {
     const { t, language } = useLanguage();
-    const { theme, toggleTheme } = useTheme();
+    const { theme, toggleTheme, isMobileOptimized } = useTheme();
     const { id } = React.use(params);
     const [blocks, setBlocks] = useState<ComicBlock[]>([]);
     const [loading, setLoading] = useState(true);
@@ -239,14 +239,14 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
         return activeHotspotCharacterPages.some((page) => page.blockId === selected) ? selected : null;
     }, [activeHotspotCharacterId, activeHotspotCharacterPages, selectedCharacterPagePreviewById]);
 
-    const scrollToBlock = React.useCallback((blockId: string, behavior: ScrollBehavior = 'smooth') => {
+    const scrollToBlock = React.useCallback((blockId: string, behavior: ScrollBehavior = isMobileOptimized ? 'auto' : 'smooth') => {
         const safeBlockId = normalizeBlockId(blockId);
         if (!safeBlockId) return;
         const el = document.getElementById(`block-${safeBlockId}`);
         if (el && scrollContainerRef.current) {
             el.scrollIntoView({ behavior, block: 'start' });
         }
-    }, [normalizeBlockId]);
+    }, [isMobileOptimized, normalizeBlockId]);
 
     const closeHotspotCard = React.useCallback(() => {
         setActiveHotspotKey(null);
@@ -813,7 +813,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
     return (
         <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDark ? 'bg-[#0a0a0a] text-white' : 'bg-neutral-50 text-neutral-900 shadow-inner'}`}>
             {/* Header */}
-            <header className={`p-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md border-b shrink-0 transition-colors duration-300 ${isDark
+            <header className={`p-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md mobile-surface-blur-soft border-b shrink-0 transition-colors duration-300 ${isDark
                 ? 'bg-[#0a0a0a]/80 border-neutral-800/50'
                 : 'bg-white/80 border-neutral-200'
                 }`}>
@@ -1089,7 +1089,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                 </main>
             ) : (
                 <div className="flex-1 flex flex-col lg:flex-row overflow-hidden w-full lg:max-w-6xl xl:max-w-7xl mx-auto">
-                    <main ref={scrollContainerRef} className="flex-1 overflow-y-auto scroll-smooth relative">
+                    <main ref={scrollContainerRef} className={`flex-1 overflow-y-auto relative ${isMobileOptimized ? '' : 'scroll-smooth'}`}>
                         <div className="max-w-2xl mx-auto flex flex-col gap-6 py-6 px-4 md:px-0 pb-16">
                             {currentChapterBlocks.map((block, index) => {
                                 const blockId = String(block.id || index);
@@ -1104,7 +1104,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                         id={`block-${blockId}`}
                                         data-block-id={blockId}
                                         data-chapter-id={block.chapterTitle ? (block.id || `chap_${index}`) : undefined}
-                                        className={`group/panel relative rounded-2xl shadow-xl transition-colors duration-300 ${isChapterlessBook ? 'overflow-visible' : 'overflow-hidden'} ${isDark
+                                        className={`comic-block group/panel relative rounded-2xl shadow-xl transition-colors duration-300 ${isChapterlessBook ? 'overflow-visible' : 'overflow-hidden'} ${isDark
                                             ? 'bg-neutral-900/50 border border-neutral-800/50'
                                             : 'bg-white border border-neutral-200'
                                             }`}
@@ -1172,6 +1172,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                                         alt={`Panel ${index + 1}`}
                                                         className="w-full h-auto block object-contain"
                                                         loading="lazy"
+                                                        decoding="async"
                                                     />
                                                     {/* Watermark */}
                                                     <img
@@ -1299,7 +1300,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                     </main>
 
                     {/* Interactive Sidebar (Desktop) */}
-                    <div className="hidden lg:flex flex-col w-[300px] xl:w-[320px] shrink-0 p-6 overflow-y-auto gap-4 custom-scrollbar lg:border-l border-neutral-200/50 dark:border-neutral-800/50 bg-white/20 dark:bg-black/20 backdrop-blur-sm">
+                    <div className="hidden lg:flex flex-col w-[300px] xl:w-[320px] shrink-0 p-6 overflow-y-auto gap-4 custom-scrollbar lg:border-l border-neutral-200/50 dark:border-neutral-800/50 bg-white/20 dark:bg-black/20 backdrop-blur-sm mobile-surface-blur-soft">
                         <h3 className={`font-black uppercase tracking-widest text-sm mb-2 ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
                             {t.bookOverview}
                         </h3>
@@ -1446,9 +1447,9 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             {/* Description Modal */}
             {showDescription && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 animate-in fade-in" onClick={() => setShowDescription(false)} />
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md mobile-surface-blur transition-opacity duration-300 animate-in fade-in" onClick={() => setShowDescription(false)} />
                     <div className={`relative w-full max-w-lg max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark ? 'bg-[#0a0a0a] border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`} onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl z-10 transition-colors">
+                        <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl mobile-surface-blur-soft z-10 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-600/10 text-blue-600'}`}>
                                     <Info className="w-5 h-5" />
@@ -1495,7 +1496,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                     onClick={e => e.stopPropagation()}
                 >
                     <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-md mobile-surface-blur transition-opacity duration-300 animate-in fade-in"
                         onClick={() => setShowCharacters(false)}
                     />
                     <div
@@ -1505,7 +1506,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                             }`}
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl z-10 transition-colors">
+                        <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl mobile-surface-blur-soft z-10 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-600/10 text-blue-600'}`}>
                                     <Users className="w-5 h-5" />
@@ -1562,7 +1563,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                     onClick={e => e.stopPropagation()}
                 >
                     <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300 animate-in fade-in"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-md mobile-surface-blur transition-opacity duration-300 animate-in fade-in"
                         onClick={() => setShowChapters(false)}
                     />
                     <div
@@ -1572,7 +1573,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                             }`}
                         onClick={e => e.stopPropagation()}
                     >
-                        <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl z-10 transition-colors">
+                        <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl mobile-surface-blur-soft z-10 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-600/10 text-blue-600'}`}>
                                     <BookOpen className="w-5 h-5" />
@@ -1635,7 +1636,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             {/* Active Hotspot Character Card (Mobile) */}
             <div className={`lg:hidden fixed inset-x-4 bottom-4 z-[95] transition-all duration-300 ${activeHotspotCharacter ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
                 {activeHotspotCharacter && (
-                    <div className={`rounded-2xl border shadow-2xl backdrop-blur-md overflow-hidden max-h-[72vh] flex flex-col ${isDark ? 'bg-[#0a0a0a]/95 border-blue-500/30 text-white' : 'bg-white/95 border-blue-200 text-neutral-900'}`}>
+                    <div className={`rounded-2xl border shadow-2xl backdrop-blur-md mobile-surface-blur-soft overflow-hidden max-h-[72vh] flex flex-col ${isDark ? 'bg-[#0a0a0a]/95 border-blue-500/30 text-white' : 'bg-white/95 border-blue-200 text-neutral-900'}`}>
                         <div className="px-4 py-3 flex items-start justify-between gap-3 border-b border-neutral-200/20">
                             <div>
                                 <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-blue-300' : 'text-blue-600'}`}>
@@ -1723,7 +1724,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                         onClick={() => jumpToAdjacentBlock('up', 'auto')}
                         disabled={!canScrollUp}
                         aria-label={language === 'ka' ? 'ზემოთ გადაადგილება' : 'Scroll up'}
-                        className={`group h-14 min-w-[64px] px-3 rounded-2xl border flex items-center justify-center gap-1.5 transition-all duration-300 backdrop-blur-xl active:scale-95 ${canScrollUp
+                        className={`group h-14 min-w-[64px] px-3 rounded-2xl border flex items-center justify-center gap-1.5 transition-all duration-300 backdrop-blur-xl mobile-surface-blur-soft active:scale-95 ${canScrollUp
                             ? isDark
                                 ? 'bg-neutral-900/92 border-blue-500/50 text-blue-200 hover:border-blue-300 hover:text-white hover:-translate-y-0.5 shadow-xl shadow-blue-500/20'
                                 : 'bg-white/98 border-blue-300 text-blue-700 hover:border-blue-500 hover:text-blue-900 hover:-translate-y-0.5 shadow-xl shadow-blue-900/15'
@@ -1740,7 +1741,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                         onClick={() => jumpToAdjacentBlock('down', 'auto')}
                         disabled={!canScrollDown}
                         aria-label={language === 'ka' ? 'ქვემოთ გადაადგილება' : 'Scroll down'}
-                        className={`group h-14 min-w-[64px] px-3 rounded-2xl border flex items-center justify-center gap-1.5 transition-all duration-300 backdrop-blur-xl active:scale-95 ${canScrollDown
+                        className={`group h-14 min-w-[64px] px-3 rounded-2xl border flex items-center justify-center gap-1.5 transition-all duration-300 backdrop-blur-xl mobile-surface-blur-soft active:scale-95 ${canScrollDown
                             ? isDark
                                 ? 'bg-blue-600/95 border-blue-300/70 text-white hover:bg-blue-500 hover:border-blue-200 hover:translate-y-0.5 shadow-xl shadow-blue-500/35'
                                 : 'bg-blue-600 border-blue-500 text-white hover:bg-blue-500 hover:border-blue-400 hover:translate-y-0.5 shadow-xl shadow-blue-600/35'
@@ -1757,7 +1758,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             {/* Floating Timer Widget for mobile or sticky side tracking */}
             {user && (
                 <div className={`fixed left-0 top-1/2 -translate-y-1/2 z-40 transition-transform duration-300 md:hidden`}>
-                    <div className={`flex flex-col items-center justify-center p-2 rounded-r-xl border border-l-0 shadow-lg backdrop-blur-md ${isDark
+                    <div className={`flex flex-col items-center justify-center p-2 rounded-r-xl border border-l-0 shadow-lg backdrop-blur-md mobile-surface-blur-soft ${isDark
                         ? 'bg-[#0a0a0a]/80 border-amber-500/20 text-amber-400'
                         : 'bg-white/90 border-amber-200 text-amber-600'
                         }`}>
@@ -1772,7 +1773,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             {/* Desktop Side floating timer alternative (so it stays literally on the left side) */}
             {user && (
                 <div className={`hidden md:block fixed left-4 top-1/2 -translate-y-1/2 z-40 transition-transform`}>
-                    <div className={`flex flex-col items-center justify-center py-4 px-2.5 rounded-2xl border shadow-xl backdrop-blur-xl ${isDark
+                    <div className={`flex flex-col items-center justify-center py-4 px-2.5 rounded-2xl border shadow-xl backdrop-blur-xl mobile-surface-blur-soft ${isDark
                         ? 'bg-neutral-900/60 border-amber-500/20 text-amber-400 shadow-amber-500/5'
                         : 'bg-white/80 border-amber-200 text-amber-600 shadow-amber-500/10'
                         } group hover:scale-105 transition-transform duration-300`}>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 type Theme = 'dark' | 'light';
@@ -8,6 +8,7 @@ type Theme = 'dark' | 'light';
 interface ThemeContextType {
     theme: Theme;
     toggleTheme: (e?: React.MouseEvent) => void;
+    isMobileOptimized: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -15,6 +16,33 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<Theme>('dark');
     const [mounted, setMounted] = useState(false);
+    const [isMobileOptimized, setIsMobileOptimized] = useState(false);
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+    const themeSwitchTimerRef = useRef<number | null>(null);
+    const isMobileRef = useRef(false);
+
+    const applyThemeClass = useCallback((nextTheme: Theme) => {
+        document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+    }, []);
+
+    const clearThemeSwitchState = useCallback(() => {
+        if (themeSwitchTimerRef.current !== null) {
+            window.clearTimeout(themeSwitchTimerRef.current);
+            themeSwitchTimerRef.current = null;
+        }
+        document.documentElement.classList.remove('theme-switching');
+        document.documentElement.classList.remove('theme-transition');
+    }, []);
+
+    const freezeThemeAnimations = useCallback(() => {
+        clearThemeSwitchState();
+        document.documentElement.classList.add('theme-switching');
+        // Slower phones need more time before re-enabling transitions
+        const timeout = isMobileRef.current ? 500 : 260;
+        themeSwitchTimerRef.current = window.setTimeout(() => {
+            clearThemeSwitchState();
+        }, timeout);
+    }, [clearThemeSwitchState]);
 
     useEffect(() => {
         // Load initial theme from localStorage or system preference
@@ -30,21 +58,79 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     useEffect(() => {
+        const coarsePointerMedia = window.matchMedia('(pointer: coarse)');
+        const smallViewportMedia = window.matchMedia('(max-width: 1024px)');
+        const reducedMotionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        const updateDevicePreferences = () => {
+            const nextIsMobileOptimized = coarsePointerMedia.matches || smallViewportMedia.matches;
+            const nextPrefersReducedMotion = reducedMotionMedia.matches;
+
+            setIsMobileOptimized(nextIsMobileOptimized);
+            setPrefersReducedMotion(nextPrefersReducedMotion);
+            isMobileRef.current = nextIsMobileOptimized;
+
+            document.documentElement.classList.toggle('mobile-optimized', nextIsMobileOptimized);
+            document.documentElement.classList.toggle('reduced-motion', nextPrefersReducedMotion);
+        };
+
+        const addListener = (mediaQuery: MediaQueryList, listener: () => void) => {
+            if (typeof mediaQuery.addEventListener === 'function') {
+                mediaQuery.addEventListener('change', listener);
+                return () => mediaQuery.removeEventListener('change', listener);
+            }
+
+            mediaQuery.addListener(listener);
+            return () => mediaQuery.removeListener(listener);
+        };
+
+        updateDevicePreferences();
+
+        const removeCoarsePointerListener = addListener(coarsePointerMedia, updateDevicePreferences);
+        const removeSmallViewportListener = addListener(smallViewportMedia, updateDevicePreferences);
+        const removeReducedMotionListener = addListener(reducedMotionMedia, updateDevicePreferences);
+
+        return () => {
+            removeCoarsePointerListener();
+            removeSmallViewportListener();
+            removeReducedMotionListener();
+            clearThemeSwitchState();
+            document.documentElement.classList.remove('mobile-optimized');
+            document.documentElement.classList.remove('reduced-motion');
+        };
+    }, [clearThemeSwitchState]);
+
+    useEffect(() => {
         if (mounted) {
             localStorage.setItem('theme', theme);
-            if (theme === 'dark') {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
+            applyThemeClass(theme);
         }
-    }, [theme, mounted]);
+    }, [theme, mounted, applyThemeClass]);
 
     const toggleTheme = (e?: React.MouseEvent) => {
         const newTheme = theme === 'dark' ? 'light' : 'dark';
+        const canUseRichTransition = Boolean(
+            typeof document.startViewTransition === 'function' &&
+            e &&
+            !isMobileOptimized &&
+            !prefersReducedMotion
+        );
 
-        if (!document.startViewTransition || !e) {
-            setTheme(newTheme);
+        freezeThemeAnimations();
+
+        if (!canUseRichTransition || !e) {
+            if (isMobileRef.current) {
+                // On mobile, avoid flushSync to prevent forced synchronous layout
+                setTheme(newTheme);
+                requestAnimationFrame(() => {
+                    applyThemeClass(newTheme);
+                });
+            } else {
+                flushSync(() => {
+                    setTheme(newTheme);
+                });
+                applyThemeClass(newTheme);
+            }
             return;
         }
 
@@ -61,12 +147,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             flushSync(() => {
                 setTheme(newTheme);
             });
-            // Ensure class is applied synchronously before snapshot
-            if (newTheme === 'dark') {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
+            applyThemeClass(newTheme);
         });
 
         transition.ready.then(() => {
@@ -80,7 +161,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                     clipPath: clipPath,
                 },
                 {
-                    duration: 600,
+                    duration: 420,
                     easing: 'ease-in-out',
                     pseudoElement: '::view-transition-new(root)',
                 }
@@ -88,12 +169,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         });
 
         transition.finished.finally(() => {
-            document.documentElement.classList.remove('theme-transition');
+            clearThemeSwitchState();
         });
     };
 
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <ThemeContext.Provider value={{ theme, toggleTheme, isMobileOptimized }}>
             {children}
         </ThemeContext.Provider>
     );
@@ -106,4 +187,3 @@ export function useTheme() {
     }
     return context;
 }
-

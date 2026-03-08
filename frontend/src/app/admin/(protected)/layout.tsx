@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { adminAuth } from '@/lib/firebase/admin';
+import { getAdminAuth } from '@/lib/firebase/admin';
 import { redirect } from 'next/navigation';
 
 export default async function AdminProtectedLayout({
@@ -15,6 +15,7 @@ export default async function AdminProtectedLayout({
     }
 
     try {
+        const adminAuth = getAdminAuth();
         const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
         if (decodedClaims.admin !== true) {
             console.error('User lacks admin claim.');
