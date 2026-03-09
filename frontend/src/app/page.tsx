@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
-import { getAllComicsSecurely } from '@/app/actions/comicMetadata';
+import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { X, Loader2, BookOpen, Globe, Sun, Moon, Search, Users, Heart, LogIn, LogOut, Eye, Info, ArrowLeft, CheckCircle2, Send } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -61,6 +60,48 @@ interface ComicData {
   blocks?: any[];
   views?: number;
   description?: string;
+}
+
+function getUpdatedAtMillis(value: unknown): number {
+  if (!value) return 0;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value instanceof Date) return value.getTime();
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toMillis' in value &&
+    typeof (value as { toMillis: unknown }).toMillis === 'function'
+  ) {
+    const millis = (value as { toMillis: () => number }).toMillis();
+    return Number.isFinite(millis) ? millis : 0;
+  }
+  return 0;
+}
+
+function sanitizeComicListItem(id: string, data: Record<string, unknown>): ComicData {
+  const blocks = Array.isArray(data.blocks) ? data.blocks : [];
+  const coverUrl = typeof data.coverUrl === 'string' ? data.coverUrl : '';
+  const firstBlock = blocks[0] && typeof blocks[0] === 'object' ? blocks[0] as Record<string, unknown> : null;
+  const firstPageUrl = coverUrl ||
+    (firstBlock && typeof firstBlock.croppedImageUrl === 'string' ? firstBlock.croppedImageUrl : '') ||
+    (firstBlock && typeof firstBlock.imageUrl === 'string' ? firstBlock.imageUrl : '') ||
+    null;
+
+  return {
+    id,
+    title: typeof data.title === 'string' ? data.title : '',
+    author: typeof data.author === 'string' ? data.author : '',
+    category: typeof data.category === 'string' ? data.category : '',
+    isPublished: data.isPublished === true,
+    isSchoolMaterial: data.isSchoolMaterial === true,
+    grade: typeof data.grade === 'number' ? data.grade : null,
+    coverUrl: coverUrl || undefined,
+    firstPageUrl,
+    updatedAt: getUpdatedAtMillis(data.updatedAt),
+    views: typeof data.views === 'number' ? data.views : 0,
+    description: typeof data.description === 'string' ? data.description : '',
+    blocks,
+  };
 }
 
 const MAX_HOTSPOTS_PER_BLOCK = 20;
@@ -1441,7 +1482,14 @@ export default function Home() {
     (async () => {
       setLoading(true);
       try {
-        const data = await getAllComicsSecurely() as ComicData[];
+        const comicsQuery = query(
+          collection(db, 'comics'),
+          where('isPublished', '==', true)
+        );
+        const snapshot = await getDocs(comicsQuery);
+        const data = snapshot.docs
+          .map((doc) => sanitizeComicListItem(doc.id, doc.data() as Record<string, unknown>))
+          .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
         setComics(data);
       } catch (e) {
         console.error('Failed to fetch comics:', e);
