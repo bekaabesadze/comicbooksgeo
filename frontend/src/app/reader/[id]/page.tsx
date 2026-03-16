@@ -12,6 +12,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGamification } from '@/lib/useGamification';
 import { resolveBookCategory } from '@/lib/bookCategory';
+import MobileTopBar from '@/components/mobile/MobileTopBar';
 
 interface BubbleOverlay {
     id: string;
@@ -792,6 +793,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
     };
 
     const currentChapterIndex = chapters.findIndex(c => c.id === currentChapterId);
+    const currentChapterTitle = currentChapterIndex >= 0 ? chapters[currentChapterIndex]?.title || null : null;
 
     const currentChapterBlocks = React.useMemo(() => {
         if (chapters.length === 0) return blocks;
@@ -811,12 +813,74 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
     const showChapterPicker = isEntering && chapters.length > 1;
 
     return (
-        <div className={`min-h-screen flex flex-col transition-colors duration-300 ${isDark ? 'bg-[#0a0a0a] text-white' : 'bg-neutral-50 text-neutral-900 shadow-inner'}`}>
-            {/* Header */}
-            <header className={`p-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md mobile-surface-blur-soft border-b shrink-0 transition-colors duration-300 ${isDark
-                ? 'bg-[#0a0a0a]/80 border-neutral-800/50'
-                : 'bg-white/80 border-neutral-200'
-                }`}>
+        <div className={`min-h-screen mobile-app-shell standalone-mobile-fill flex flex-col transition-colors duration-300 ${isDark ? 'bg-[#0a0a0a] text-white' : 'bg-neutral-50 text-neutral-900 shadow-inner'} ${isMobileOptimized ? 'px-0' : ''}`}>
+            {isMobileOptimized ? (
+                <>
+                    <MobileTopBar
+                        title={title || (t.loadingComicBook || 'Loading...')}
+                        subtitle={showChapterPicker ? t.selectChapter : (currentChapterTitle || categoryLabel || author || undefined)}
+                        className="px-4"
+                        leading={(
+                            <Link
+                                href="/"
+                                className={`mobile-touch-target flex h-11 w-11 items-center justify-center rounded-2xl border ${isDark ? 'border-white/10 bg-white/6 text-white' : 'border-neutral-200 bg-white text-neutral-900 shadow-sm'}`}
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </Link>
+                        )}
+                        actions={(
+                            <>
+                                {user ? (
+                                    <div className={`rounded-2xl border px-3 py-2 text-right ${isDark ? 'border-white/10 bg-white/6' : 'border-neutral-200 bg-white shadow-sm'}`}>
+                                        <div className={`text-[10px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-amber-300' : 'text-amber-600'}`}>{formatTime(readingTime)}</div>
+                                        <div className={`text-[10px] font-bold uppercase tracking-[0.16em] ${isDark ? 'text-white/60' : 'text-neutral-500'}`}>{t.readingTime}</div>
+                                    </div>
+                                ) : null}
+                                <button
+                                    onClick={toggleTheme}
+                                    className={`mobile-touch-target flex h-11 w-11 items-center justify-center rounded-2xl border ${isDark ? 'border-white/10 bg-white/6 text-amber-300' : 'border-neutral-200 bg-white text-blue-700 shadow-sm'}`}
+                                    aria-label="Toggle Theme"
+                                >
+                                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                                </button>
+                            </>
+                        )}
+                    />
+
+                    {!loading && !showChapterPicker && !showDescription && !showCharacters && !showChapters ? (
+                        <div className="px-4 pt-3">
+                            <div className={`mobile-card mobile-horizontal-scroll border px-3 py-3 ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-neutral-200 bg-white shadow-sm'}`}>
+                                {chapters.length > 0 ? (
+                                    <button
+                                        onClick={() => setShowChapters(true)}
+                                        className={`mobile-touch-target shrink-0 rounded-full border px-4 text-[11px] font-black uppercase tracking-[0.16em] ${isDark ? 'border-blue-500/20 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}
+                                    >
+                                        {t.chapters}
+                                    </button>
+                                ) : null}
+                                {characters.length > 0 ? (
+                                    <button
+                                        onClick={() => setShowCharacters(true)}
+                                        className={`mobile-touch-target shrink-0 rounded-full border px-4 text-[11px] font-black uppercase tracking-[0.16em] ${isDark ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
+                                    >
+                                        {t.characters}
+                                    </button>
+                                ) : null}
+                                <button
+                                    onClick={() => setShowDescription(true)}
+                                    className={`mobile-touch-target shrink-0 rounded-full border px-4 text-[11px] font-black uppercase tracking-[0.16em] ${isDark ? 'border-white/10 bg-white/6 text-white' : 'border-neutral-200 bg-neutral-50 text-neutral-700'}`}
+                                >
+                                    {t.description || 'Description'}
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
+                </>
+            ) : (
+                <header className={`p-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md mobile-surface-blur-soft border-b shrink-0 transition-colors duration-300 ${isDark
+                    ? 'bg-[#0a0a0a]/80 border-neutral-800/50'
+                    : 'bg-white/80 border-neutral-200'
+                    }`}>
                 <Link href="/" className={`p-2 rounded-full transition-colors ${isDark ? 'hover:bg-neutral-800' : 'hover:bg-neutral-100'}`}>
                     <ArrowLeft className={`w-5 h-5 ${isDark ? 'text-neutral-300' : 'text-neutral-600'}`} />
                 </Link>
@@ -987,7 +1051,8 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                 >
                     {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
-            </header>
+                </header>
+            )}
 
             {loading ? (
                 <main className="flex-1 flex items-center justify-center">
@@ -998,7 +1063,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                 </main>
             ) : showChapterPicker ? (
                 <main className="flex-1 overflow-y-auto bg-inherit">
-                    <div className="max-w-xl mx-auto py-12 px-6 flex flex-col gap-10">
+                    <div className={`max-w-xl mx-auto flex flex-col gap-10 ${isMobileOptimized ? 'py-6 px-4' : 'py-12 px-6'}`}>
                         <div className="text-center space-y-3">
                             <h2 className={`text-3xl font-black uppercase tracking-tight ${isDark ? 'text-white' : 'text-neutral-900'}`}>
                                 {t.selectChapter}
@@ -1088,9 +1153,9 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                     <div className={isDark ? 'text-neutral-500' : 'text-neutral-400'}>{t.noComics}</div>
                 </main>
             ) : (
-                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden w-full lg:max-w-6xl xl:max-w-7xl mx-auto">
+                <div className={`flex-1 flex flex-col lg:flex-row overflow-hidden w-full mx-auto ${isMobileOptimized ? '' : 'lg:max-w-6xl xl:max-w-7xl'}`}>
                     <main ref={scrollContainerRef} className={`flex-1 overflow-y-auto relative ${isMobileOptimized ? '' : 'scroll-smooth'}`}>
-                        <div className="max-w-2xl mx-auto flex flex-col gap-6 py-6 px-4 md:px-0 pb-16">
+                        <div className={`mx-auto flex flex-col ${isMobileOptimized ? 'max-w-none gap-4 px-2 pb-36 pt-4' : 'max-w-2xl gap-6 py-6 px-4 md:px-0 pb-16'}`}>
                             {currentChapterBlocks.map((block, index) => {
                                 const blockId = String(block.id || index);
                                 const isCheckedPage = checkedBlockId === blockId;
@@ -1104,7 +1169,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                         id={`block-${blockId}`}
                                         data-block-id={blockId}
                                         data-chapter-id={block.chapterTitle ? (block.id || `chap_${index}`) : undefined}
-                                        className={`comic-block group/panel relative rounded-2xl shadow-xl transition-colors duration-300 ${isChapterlessBook ? 'overflow-visible' : 'overflow-hidden'} ${isDark
+                                        className={`comic-block group/panel relative transition-colors duration-300 ${isChapterlessBook ? 'overflow-visible' : 'overflow-hidden'} ${isMobileOptimized ? 'rounded-[1.4rem] shadow-none' : 'rounded-2xl shadow-xl'} ${isDark
                                             ? 'bg-neutral-900/50 border border-neutral-800/50'
                                             : 'bg-white border border-neutral-200'
                                             }`}
@@ -1157,7 +1222,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                             </div>
                                         )}
                                         {block.text && (
-                                            <div className={`px-6 ${block.chapterTitle ? 'pt-4 pb-4' : 'py-4'}`}>
+                                            <div className={`${isMobileOptimized ? 'px-4' : 'px-6'} ${block.chapterTitle ? 'pt-4 pb-4' : isMobileOptimized ? 'py-3' : 'py-4'}`}>
                                                 <p className={`font-geo-text text-base leading-relaxed whitespace-pre-wrap ${isDark ? 'text-neutral-200' : 'text-neutral-800'
                                                     }`}>
                                                     {block.text}
@@ -1165,8 +1230,8 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                             </div>
                                         )}
                                         {(block.croppedImageUrl || block.imageUrl) && (
-                                            <div className={`px-4 pb-4 ${block.text ? 'pt-0' : 'pt-4'}`}>
-                                                <div className="relative w-full rounded-xl overflow-hidden shadow-sm">
+                                            <div className={`${isMobileOptimized ? 'px-2 pb-2' : 'px-4 pb-4'} ${block.text ? 'pt-0' : 'pt-4'}`}>
+                                                <div className={`relative w-full overflow-hidden ${isMobileOptimized ? 'rounded-[1rem]' : 'rounded-xl shadow-sm'}`}>
                                                     <img
                                                         src={block.croppedImageUrl || block.imageUrl}
                                                         alt={`Panel ${index + 1}`}
@@ -1446,9 +1511,9 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
 
             {/* Description Modal */}
             {showDescription && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+                <div className={`fixed inset-0 z-[100] flex ${isMobileOptimized ? 'items-end justify-stretch p-0' : 'items-center justify-center p-4'}`} onClick={e => e.stopPropagation()}>
                     <div className="absolute inset-0 bg-black/60 backdrop-blur-md mobile-surface-blur transition-opacity duration-300 animate-in fade-in" onClick={() => setShowDescription(false)} />
-                    <div className={`relative w-full max-w-lg max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark ? 'bg-[#0a0a0a] border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`} onClick={e => e.stopPropagation()}>
+                    <div className={`relative w-full overflow-hidden shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isMobileOptimized ? 'mobile-sheet max-h-[82vh] rounded-t-[1.75rem] rounded-b-none' : 'max-w-lg max-h-[70vh] rounded-2xl'} ${isDark ? 'bg-[#0a0a0a] border-neutral-800 text-white' : 'bg-white border-neutral-200 text-neutral-900'}`} onClick={e => e.stopPropagation()}>
                         <div className="px-6 py-5 border-b flex items-center justify-between sticky top-0 bg-inherit/90 backdrop-blur-xl mobile-surface-blur-soft z-10 transition-colors">
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-600/10 text-blue-600'}`}>
@@ -1492,7 +1557,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             {/* Characters Modal */}
             {showCharacters && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                    className={`fixed inset-0 z-[100] flex ${isMobileOptimized ? 'items-end justify-stretch p-0' : 'items-center justify-center p-4'}`}
                     onClick={e => e.stopPropagation()}
                 >
                     <div
@@ -1500,7 +1565,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                         onClick={() => setShowCharacters(false)}
                     />
                     <div
-                        className={`relative w-full max-w-lg max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark
+                        className={`relative w-full overflow-hidden shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isMobileOptimized ? 'mobile-sheet max-h-[82vh] rounded-t-[1.75rem] rounded-b-none' : 'max-w-lg max-h-[70vh] rounded-2xl'} ${isDark
                             ? 'bg-[#0a0a0a] border-neutral-800 text-white'
                             : 'bg-white border-neutral-200 text-neutral-900'
                             }`}
@@ -1559,7 +1624,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             {/* Chapters Modal */}
             {showChapters && hasChapters && (
                 <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                    className={`fixed inset-0 z-[100] flex ${isMobileOptimized ? 'items-end justify-stretch p-0' : 'items-center justify-center p-4'}`}
                     onClick={e => e.stopPropagation()}
                 >
                     <div
@@ -1567,7 +1632,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                         onClick={() => setShowChapters(false)}
                     />
                     <div
-                        className={`relative w-full max-w-lg max-h-[70vh] overflow-hidden rounded-2xl shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isDark
+                        className={`relative w-full overflow-hidden shadow-2xl border flex flex-col transition-all duration-300 animate-in zoom-in-95 fade-in slide-in-from-bottom-4 ${isMobileOptimized ? 'mobile-sheet max-h-[82vh] rounded-t-[1.75rem] rounded-b-none' : 'max-w-lg max-h-[70vh] rounded-2xl'} ${isDark
                             ? 'bg-[#0a0a0a] border-neutral-800 text-white'
                             : 'bg-white border-neutral-200 text-neutral-900'
                             }`}
@@ -1634,7 +1699,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                 </div>
             )}
             {/* Active Hotspot Character Card (Mobile) */}
-            <div className={`lg:hidden fixed inset-x-4 bottom-4 z-[95] transition-all duration-300 ${activeHotspotCharacter ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+            <div className={`lg:hidden fixed inset-x-4 z-[95] transition-all duration-300 ${isMobileOptimized ? 'bottom-24 mobile-safe-bottom' : 'bottom-4'} ${activeHotspotCharacter ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
                 {activeHotspotCharacter && (
                     <div className={`rounded-2xl border shadow-2xl backdrop-blur-md mobile-surface-blur-soft overflow-hidden max-h-[72vh] flex flex-col ${isDark ? 'bg-[#0a0a0a]/95 border-blue-500/30 text-white' : 'bg-white/95 border-blue-200 text-neutral-900'}`}>
                         <div className="px-4 py-3 flex items-start justify-between gap-3 border-b border-neutral-200/20">
@@ -1718,6 +1783,38 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
 
             {/* Reader Up/Down Controls */}
             {!loading && blocks.length > 0 && !showDescription && !showCharacters && !showChapters && (
+                isMobileOptimized ? (
+                    <div className="fixed inset-x-4 bottom-4 z-[99] mobile-safe-bottom">
+                        <div className={`mobile-card flex items-center gap-3 border p-2.5 shadow-2xl ${isDark ? 'border-white/10 bg-[#06101d]/94 text-white' : 'border-neutral-200 bg-white/98 text-neutral-900'}`}>
+                            <button
+                                type="button"
+                                onClick={() => jumpToAdjacentBlock('up', 'auto')}
+                                disabled={!canScrollUp}
+                                aria-label={language === 'ka' ? 'ზემოთ გადაადგილება' : 'Scroll up'}
+                                className={`mobile-touch-target flex flex-1 items-center justify-center gap-2 rounded-[1.1rem] px-3 text-[11px] font-black uppercase tracking-[0.16em] ${canScrollUp
+                                    ? isDark ? 'bg-white/8 text-blue-100' : 'bg-neutral-100 text-neutral-800'
+                                    : isDark ? 'bg-white/4 text-white/35' : 'bg-neutral-100 text-neutral-400'
+                                }`}
+                            >
+                                <ArrowUp className="h-4 w-4" />
+                                {language === 'ka' ? 'ზემოთ' : 'Up'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => jumpToAdjacentBlock('down', 'auto')}
+                                disabled={!canScrollDown}
+                                aria-label={language === 'ka' ? 'ქვემოთ გადაადგილება' : 'Scroll down'}
+                                className={`mobile-touch-target flex flex-[1.2] items-center justify-center gap-2 rounded-[1.1rem] px-3 text-[11px] font-black uppercase tracking-[0.16em] ${canScrollDown
+                                    ? 'bg-blue-600 text-white'
+                                    : isDark ? 'bg-white/4 text-white/35' : 'bg-neutral-100 text-neutral-400'
+                                }`}
+                            >
+                                <ArrowDown className="h-4 w-4" />
+                                {language === 'ka' ? 'ქვემოთ' : 'Down'}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
                 <div className="fixed right-4 top-1/2 -translate-y-1/2 z-[99] flex flex-col gap-3">
                     <button
                         type="button"
@@ -1754,10 +1851,11 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                         <span className="text-[11px] font-black tracking-widest uppercase">{language === 'ka' ? 'ქვემოთ' : 'Down'}</span>
                     </button>
                 </div>
+                )
             )}
             {/* Floating Timer Widget for mobile or sticky side tracking */}
-            {user && (
-                <div className={`fixed left-0 top-1/2 -translate-y-1/2 z-40 transition-transform duration-300 md:hidden`}>
+            {user && !isMobileOptimized && (
+                <div className={`fixed left-0 top-1/2 -translate-y-1/2 z-40 transition-transform duration-300 md:hidden ${isMobileOptimized ? 'left-[max(0px,var(--safe-left))]' : ''}`}>
                     <div className={`flex flex-col items-center justify-center p-2 rounded-r-xl border border-l-0 shadow-lg backdrop-blur-md mobile-surface-blur-soft ${isDark
                         ? 'bg-[#0a0a0a]/80 border-amber-500/20 text-amber-400'
                         : 'bg-white/90 border-amber-200 text-amber-600'

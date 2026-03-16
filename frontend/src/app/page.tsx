@@ -11,6 +11,9 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useGamification, XP_PER_CHAPTER } from '@/lib/useGamification';
 import { Trophy, Star, Award, GraduationCap, ChevronRight, BarChart3, Settings } from 'lucide-react';
+import PwaInstallPrompt from '@/components/pwa/PwaInstallPrompt';
+import MobileScreenShell from '@/components/mobile/MobileScreenShell';
+import MobileTopBar from '@/components/mobile/MobileTopBar';
 
 interface BubbleOverlay {
   id: string;
@@ -60,6 +63,7 @@ interface ComicData {
   blocks?: any[];
   views?: number;
   description?: string;
+  coverTextOverlays?: any[];
 }
 
 function getUpdatedAtMillis(value: unknown): number {
@@ -101,6 +105,7 @@ function sanitizeComicListItem(id: string, data: Record<string, unknown>): Comic
     views: typeof data.views === 'number' ? data.views : 0,
     description: typeof data.description === 'string' ? data.description : '',
     blocks,
+    coverTextOverlays: Array.isArray(data.coverTextOverlays) ? data.coverTextOverlays : [],
   };
 }
 
@@ -643,7 +648,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-8 overflow-hidden transition-colors duration-300"
+      className={`fixed inset-0 z-50 flex items-start justify-center p-4 md:p-8 overflow-hidden transition-colors duration-300 ${isMobileOptimized ? 'mobile-safe-top mobile-safe-bottom' : ''}`}
       style={{
         backdropFilter: isMobileOptimized ? 'none' : 'blur(16px)',
         backgroundColor: isDark ? (isMobileOptimized ? 'rgba(0,0,0,0.95)' : 'rgba(0,0,0,0.85)') : (isMobileOptimized ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.7)')
@@ -654,7 +659,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
         onClose();
       }}
     >
-      <div className="w-full max-w-5xl h-[calc(100vh-64px)] flex flex-col lg:flex-row gap-4 lg:gap-6 justify-center" onClick={e => e.stopPropagation()}>
+      <div className={`w-full max-w-5xl h-[calc(100vh-64px)] flex flex-col lg:flex-row gap-4 lg:gap-6 justify-center ${isMobileOptimized ? 'standalone-mobile-fill h-[calc(100svh-32px)]' : ''}`} onClick={e => e.stopPropagation()}>
         {/* Main Reader Wrapper */}
         <div
           className={`relative w-full lg:max-w-2xl h-full flex flex-col rounded-2xl overflow-hidden border shadow-2xl transition-colors duration-300 shrink-0 ${isDark
@@ -663,7 +668,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
             }`}
         >
           {/* Header */}
-          <div className={`flex items-center justify-between px-6 py-4 border-b mobile-surface-blur-soft shrink-0 transition-colors ${isDark
+          <div className={`flex items-center justify-between px-6 py-4 border-b mobile-surface-blur-soft shrink-0 transition-colors ${isMobileOptimized ? 'mobile-safe-top' : ''} ${isDark
             ? 'border-neutral-800 bg-[#0d0d0d]/95'
             : 'border-neutral-100 bg-white/95'
             }`}>
@@ -1435,7 +1440,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
 // ─── Home Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const { language, setLanguage, t } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, isMobileOptimized } = useTheme();
   const router = useRouter();
   const { user, signInWithGoogle, signOut, loading: authLoading } = useAuth();
   const [comics, setComics] = useState<ComicData[]>([]);
@@ -1578,11 +1583,446 @@ export default function Home() {
     }
   };
 
+  const materialOptions = [
+    { id: 'all', label: t.allMaterials },
+    { id: 'school', label: t.schoolMaterial },
+    { id: 'non-school', label: t.nonSchoolMaterial },
+  ] as const;
+
+  const gradeOptions = [8, 9, 10, 11, 12];
+
+  if (isMobileOptimized) {
+    return (
+      <MobileScreenShell
+        className={`${isDark ? 'bg-[#07111d] text-white' : 'bg-[#f3f7fb] text-neutral-900'}`}
+        topBar={(
+          <MobileTopBar
+            title={(
+              <Link href="/" className="flex items-center gap-2.5">
+                <img src="/CBA.jpg" alt="Logo" className="h-9 w-9 rounded-xl object-contain shadow-lg" />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-black tracking-tight">
+                    Comic<span className="text-blue-400">Books</span><span className="text-blue-600">Geo</span>
+                  </div>
+                  <div className={`truncate text-[10px] font-bold uppercase tracking-[0.18em] ${isDark ? 'text-blue-200/70' : 'text-blue-700/60'}`}>
+                    {t.publicLibrary}
+                  </div>
+                </div>
+              </Link>
+            )}
+            actions={(
+              <>
+                <button
+                  onClick={toggleTheme}
+                  aria-label="Toggle Theme"
+                  className={`mobile-touch-target flex h-11 w-11 items-center justify-center rounded-2xl border transition-colors ${isDark ? 'border-white/10 bg-white/6 text-amber-300' : 'border-neutral-200 bg-white text-blue-700 shadow-sm'}`}
+                >
+                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+                <button
+                  onClick={() => setLanguage(language === 'ka' ? 'en' : 'ka')}
+                  aria-label="Toggle Language"
+                  className={`mobile-touch-target flex min-w-[52px] items-center justify-center rounded-2xl border px-3 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${isDark ? 'border-white/10 bg-white/6 text-blue-100' : 'border-neutral-200 bg-white text-blue-700 shadow-sm'}`}
+                >
+                  {language === 'ka' ? 'GE' : 'EN'}
+                </button>
+                {!authLoading && (
+                  user ? (
+                    <Link
+                      href="/profile"
+                      className={`mobile-touch-target flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border transition-colors ${isDark ? 'border-white/10 bg-white/6' : 'border-neutral-200 bg-white shadow-sm'}`}
+                      aria-label={t.profile}
+                    >
+                      {user.photoURL ? (
+                        <img src={user.photoURL} alt={user.displayName || 'User'} className="h-full w-full object-cover" />
+                      ) : (
+                        <Users className={`h-4 w-4 ${isDark ? 'text-blue-100' : 'text-blue-700'}`} />
+                      )}
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={signInWithGoogle}
+                      className="mobile-touch-target rounded-2xl bg-blue-600 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-white"
+                    >
+                      {language === 'ka' ? 'შესვლა' : 'Sign In'}
+                    </button>
+                  )
+                )}
+              </>
+            )}
+          />
+        )}
+      >
+        <div className="space-y-4">
+          <section className="mobile-card mobile-compressed-hero relative overflow-hidden border border-white/10 shadow-[0_22px_48px_rgba(3,7,18,0.26)]">
+            <img
+              src="/banner.jpg"
+              alt="Banner background"
+              className="absolute inset-0 h-full w-full object-cover object-[center_18%]"
+            />
+            <div className={`absolute inset-0 ${isDark ? 'bg-[linear-gradient(180deg,rgba(3,7,18,0.18),rgba(3,7,18,0.84))]' : 'bg-[linear-gradient(180deg,rgba(15,23,42,0.08),rgba(15,23,42,0.72))]'}`} />
+            <div className="relative flex h-full flex-col justify-end gap-3 p-4">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-300/30 bg-blue-500/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-blue-100">
+                <BookOpen className="h-3.5 w-3.5" />
+                {loading ? t.loadingLibrary : t.comicCount(filteredComics.length)}
+              </div>
+              <div className="max-w-[16rem]">
+                <h1 className="font-hero text-[1.9rem] font-black leading-[0.95] text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.65)]">
+                  {t.heroTitle}
+                </h1>
+                <p className="mt-2 text-xs font-medium leading-relaxed text-white/74">
+                  {language === 'ka'
+                    ? 'აპის სტილის ბიბლიოთეკა, სწრაფი ძიებით და მობილურისთვის შეკუმშული განლაგებით.'
+                    : 'A phone-first library with fast search, compact cards, and app-style navigation.'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className={`mobile-card border p-3 shadow-sm ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+            <label className="block">
+              <span className={`mb-2 block text-[10px] font-black uppercase tracking-[0.18em] ${isDark ? 'text-blue-200/70' : 'text-blue-700/60'}`}>
+                {language === 'ka' ? 'ძიება' : 'Search'}
+              </span>
+              <div className={`flex items-center gap-3 rounded-2xl border px-3 ${isDark ? 'border-white/10 bg-black/20' : 'border-neutral-200 bg-neutral-50'}`}>
+                <Search className={`h-4 w-4 ${isDark ? 'text-blue-200/70' : 'text-blue-700/70'}`} />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={t.searchPlaceholder}
+                  className={`min-h-[48px] flex-1 bg-transparent text-sm font-semibold outline-none ${isDark ? 'placeholder:text-white/35' : 'placeholder:text-neutral-400'}`}
+                />
+                {searchTerm ? (
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className={`mobile-touch-target flex h-10 w-10 items-center justify-center rounded-xl ${isDark ? 'text-white/55' : 'text-neutral-500'}`}
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            </label>
+          </section>
+
+          <PwaInstallPrompt language={language} className="w-full text-left" />
+
+          <section className="space-y-3">
+            <div className="mobile-horizontal-scroll">
+              {materialOptions.map((option) => {
+                const isActive = materialFilter === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => {
+                      setMaterialFilter(option.id);
+                      if (option.id === 'non-school') setGradeFilter('all');
+                    }}
+                    className={`mobile-touch-target shrink-0 rounded-full border px-4 text-[11px] font-black uppercase tracking-[0.16em] transition-colors ${isActive
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : isDark ? 'border-white/10 bg-[#0d1829] text-blue-100/72' : 'border-neutral-200 bg-white text-neutral-700 shadow-sm'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {materialFilter === 'school' ? (
+              <div className="mobile-horizontal-scroll">
+                <button
+                  onClick={() => setGradeFilter('all')}
+                  className={`mobile-touch-target shrink-0 rounded-full border px-4 text-[11px] font-black uppercase tracking-[0.16em] transition-colors ${gradeFilter === 'all'
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : isDark ? 'border-white/10 bg-[#0d1829] text-blue-100/72' : 'border-neutral-200 bg-white text-neutral-700 shadow-sm'
+                  }`}
+                >
+                  {t.allMaterials}
+                </button>
+                {gradeOptions.map((grade) => (
+                  <button
+                    key={grade}
+                    onClick={() => setGradeFilter(grade)}
+                    className={`mobile-touch-target shrink-0 rounded-full border px-4 text-[11px] font-black uppercase tracking-[0.16em] transition-colors ${gradeFilter === grade
+                      ? 'border-blue-600 bg-blue-600 text-white'
+                      : isDark ? 'border-white/10 bg-[#0d1829] text-blue-100/72' : 'border-neutral-200 bg-white text-neutral-700 shadow-sm'
+                    }`}
+                  >
+                    {t.gradeLabel(grade)}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="space-y-3">
+            <div className="flex items-end justify-between gap-3 px-1">
+              <div>
+                <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${isDark ? 'text-blue-200/70' : 'text-blue-700/60'}`}>
+                  {t.publicLibrary}
+                </p>
+                <h2 className="pt-1 text-lg font-black tracking-tight">
+                  {loading
+                    ? t.loadingLibrary
+                    : filteredComics.length === 0
+                      ? (searchTerm ? (language === 'ka' ? 'შედეგი ვერ მოიძებნა' : 'No results found') : t.noComics)
+                      : t.comicCount(filteredComics.length)}
+                </h2>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className={`mobile-card border p-8 text-center ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-blue-500" />
+                <p className={`text-sm ${isDark ? 'text-white/70' : 'text-neutral-600'}`}>{t.loadingLibrary}</p>
+              </div>
+            ) : filteredComics.length === 0 ? (
+              <div className={`mobile-card border p-8 text-center ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                <Search className={`mx-auto mb-3 h-6 w-6 ${isDark ? 'text-white/28' : 'text-neutral-300'}`} />
+                <p className={`text-sm ${isDark ? 'text-white/70' : 'text-neutral-600'}`}>
+                  {searchTerm ? (language === 'ka' ? 'შედეგი ვერ მოიძებნა' : 'No results found') : t.noComics}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {filteredComics.map((comic) => {
+                  const firstPageUrl = (comic as any).firstPageUrl || comic.blocks?.[0]?.croppedImageUrl || comic.blocks?.[0]?.imageUrl || null;
+                  const isDraft = !comic.isPublished;
+
+                  return (
+                    <article
+                      key={comic.id}
+                      onClick={() => {
+                        if (isDraft) {
+                          router.push(`/coming-soon/${encodeURIComponent(comic.id)}`);
+                          return;
+                        }
+                        setSelected(comic);
+                      }}
+                      className={`comic-card-item mobile-card group cursor-pointer overflow-hidden border shadow-sm ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}
+                    >
+                      <div className="relative aspect-[0.79] overflow-hidden">
+                        {comic.coverUrl || firstPageUrl ? (
+                          <>
+                            <img
+                              src={comic.coverUrl || firstPageUrl}
+                              alt={comic.title}
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                            {comic.coverTextOverlays?.map((overlay: any) => (
+                              <div
+                                key={overlay.id}
+                                className="pointer-events-none absolute"
+                                style={{
+                                  left: `${overlay.x}%`,
+                                  top: `${overlay.y}%`,
+                                  transform: `translate(-50%, -50%) rotate(${overlay.rotation || 0}deg)`,
+                                  zIndex: 15,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontFamily: overlay.fontFamily,
+                                    fontSize: Math.max(6, (overlay.fontSize || 48) * 0.24),
+                                    fontWeight: overlay.fontWeight,
+                                    fontStyle: overlay.fontStyle,
+                                    color: overlay.color,
+                                    textTransform: overlay.textTransform,
+                                    letterSpacing: (overlay.letterSpacing || 0) * 0.24,
+                                    lineHeight: overlay.lineHeight,
+                                    opacity: overlay.opacity ?? 1,
+                                    textShadow: overlay.shadowEnabled
+                                      ? `${(overlay.shadowOffsetX || 2) * 0.24}px ${(overlay.shadowOffsetY || 4) * 0.24}px ${(overlay.shadowBlur || 8) * 0.24}px ${overlay.shadowColor || 'rgba(0,0,0,0.7)'}`
+                                      : 'none',
+                                    whiteSpace: 'pre',
+                                    display: 'block',
+                                  }}
+                                >
+                                  {overlay.text}
+                                </span>
+                              </div>
+                            ))}
+                          </>
+                        ) : (
+                          <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-900 to-slate-950 text-2xl font-black uppercase tracking-[0.22em] text-blue-200">
+                            {comic.title.substring(0, 2)}
+                          </div>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                        <img
+                          src="/CBA.jpg"
+                          alt=""
+                          className="pointer-events-none absolute bottom-2 right-2 h-6 w-6 select-none object-contain opacity-80"
+                        />
+                        {isDraft ? (
+                          <div className="absolute left-2 top-2 rounded-full bg-blue-600 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-white">
+                            {t.comingSoon}
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={(e) => toggleFavorite(e, comic.id)}
+                              className="absolute right-2 top-2 rounded-full bg-black/35 p-2 text-white"
+                              aria-label="Toggle favorite"
+                            >
+                              <Heart
+                                className={`h-4 w-4 ${favorites.includes(comic.id) ? 'fill-red-500 text-red-500' : 'text-white'}`}
+                              />
+                            </button>
+                            <div className="absolute bottom-2 left-2 flex flex-wrap gap-1.5">
+                              <span className="rounded-full bg-black/45 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white">
+                                {comic.blocks?.length || 0} {language === 'ka' ? 'გვერდი' : 'Pages'}
+                              </span>
+                              {comic.views ? (
+                                <span className="rounded-full bg-black/45 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-white">
+                                  {t.views(comic.views || 0)}
+                                </span>
+                              ) : null}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div className="space-y-2 p-3">
+                        <h3 className={`line-clamp-2 text-sm font-black leading-tight ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+                          {comic.title}
+                        </h3>
+                        <p className={`truncate text-[10px] font-bold uppercase tracking-[0.16em] ${isDark ? 'text-blue-100/64' : 'text-neutral-500'}`}>
+                          {comic.author}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${comic.isSchoolMaterial ? 'bg-emerald-500/14 text-emerald-400' : isDark ? 'bg-white/8 text-white/72' : 'bg-neutral-100 text-neutral-600'}`}>
+                            {comic.isSchoolMaterial ? t.schoolMaterial : t.nonSchoolMaterial}
+                          </span>
+                          {comic.isSchoolMaterial && comic.grade ? (
+                            <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${isDark ? 'bg-blue-500/16 text-blue-200' : 'bg-blue-50 text-blue-700'}`}>
+                              {t.gradeLabel(comic.grade)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          <section className={`mobile-card border shadow-sm ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+            <div className="border-b border-white/10 px-4 py-4">
+              <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${isDark ? 'text-blue-200/70' : 'text-blue-700/60'}`}>
+                {t.requestEyebrow}
+              </p>
+              <h2 className="pt-2 text-lg font-black leading-tight">{t.requestTitle}</h2>
+              <p className={`pt-2 text-sm leading-relaxed ${isDark ? 'text-white/70' : 'text-neutral-600'}`}>
+                {t.requestDescription}
+              </p>
+            </div>
+            <form onSubmit={submitPublishRequest} className="space-y-3 p-4">
+              <label className="block">
+                <span className={`mb-2 block text-[10px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-blue-200/70' : 'text-blue-700/60'}`}>
+                  {t.requestNameLabel}
+                </span>
+                <input
+                  type="text"
+                  value={requestForm.requesterName}
+                  onChange={(e) => handleRequestFieldChange('requesterName', e.target.value)}
+                  placeholder={t.requestNamePlaceholder}
+                  maxLength={80}
+                  required
+                  className={`min-h-[48px] w-full rounded-2xl border px-4 text-sm outline-none transition-colors ${isDark ? 'border-white/10 bg-black/20 text-white placeholder:text-white/35' : 'border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400'}`}
+                />
+              </label>
+              <label className="block">
+                <span className={`mb-2 block text-[10px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-blue-200/70' : 'text-blue-700/60'}`}>
+                  {t.requestComicTitleLabel}
+                </span>
+                <input
+                  type="text"
+                  value={requestForm.comicTitle}
+                  onChange={(e) => handleRequestFieldChange('comicTitle', e.target.value)}
+                  placeholder={t.requestComicTitlePlaceholder}
+                  maxLength={160}
+                  required
+                  className={`min-h-[48px] w-full rounded-2xl border px-4 text-sm outline-none transition-colors ${isDark ? 'border-white/10 bg-black/20 text-white placeholder:text-white/35' : 'border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400'}`}
+                />
+              </label>
+              <label className="block">
+                <span className={`mb-2 block text-[10px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-blue-200/70' : 'text-blue-700/60'}`}>
+                  {t.requestAuthorLabel}
+                </span>
+                <input
+                  type="text"
+                  value={requestForm.bookAuthor}
+                  onChange={(e) => handleRequestFieldChange('bookAuthor', e.target.value)}
+                  placeholder={t.requestAuthorPlaceholder}
+                  maxLength={120}
+                  required
+                  className={`min-h-[48px] w-full rounded-2xl border px-4 text-sm outline-none transition-colors ${isDark ? 'border-white/10 bg-black/20 text-white placeholder:text-white/35' : 'border-neutral-200 bg-neutral-50 text-neutral-900 placeholder:text-neutral-400'}`}
+                />
+              </label>
+              <div className="hidden" aria-hidden="true">
+                <label htmlFor="website-check-mobile">Website</label>
+                <input
+                  id="website-check-mobile"
+                  type="text"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={requestForm.hpField}
+                  onChange={(e) => handleRequestFieldChange('hpField', e.target.value)}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={requestStatus === 'submitting'}
+                className="mobile-touch-target flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black uppercase tracking-[0.16em] text-white transition-colors disabled:bg-blue-700/70"
+              >
+                {requestStatus === 'submitting' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t.requestSending}
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    {t.requestSubmit}
+                  </>
+                )}
+              </button>
+              {requestFeedback ? (
+                <p className={`text-xs font-bold ${requestStatus === 'success' ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {requestFeedback}
+                </p>
+              ) : null}
+            </form>
+          </section>
+
+          <footer className={`px-1 pb-2 text-[11px] ${isDark ? 'text-white/54' : 'text-neutral-500'}`}>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href="/privacy" className="font-bold uppercase tracking-[0.14em]">
+                {t.privacyPolicy}
+              </Link>
+              <Link href="/terms" className="font-bold uppercase tracking-[0.14em]">
+                {t.termsAndConditions}
+              </Link>
+              <Link href="/portfolio" className="font-bold uppercase tracking-[0.14em]">
+                {t.createdBy}
+              </Link>
+            </div>
+          </footer>
+        </div>
+        {selected ? <ComicReaderModal comic={selected} onClose={closeModal} /> : null}
+      </MobileScreenShell>
+    );
+  }
+
   return (
-    <div className={`min-h-screen transition-colors duration-200 font-sans ${isDark ? 'bg-[#080c14] text-white' : 'bg-neutral-50 text-neutral-900'}`}>
+    <div className={`min-h-screen mobile-app-shell standalone-mobile-fill transition-colors duration-200 font-sans ${isDark ? 'bg-[#080c14] text-white' : 'bg-neutral-50 text-neutral-900'}`}>
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <header className={`absolute top-0 left-0 right-0 z-50 transition-colors duration-300`}>
+      <header className={`absolute top-0 left-0 right-0 z-50 transition-colors duration-300 ${isMobileOptimized ? 'mobile-safe-top' : ''}`}>
         {/* Right Blur Gradient behind buttons */}
         <div className="absolute inset-y-0 right-0 w-96 pointer-events-none overflow-hidden">
           <div className={`absolute inset-0 backdrop-blur-md mobile-surface-blur ${isDark ? 'bg-black/50' : 'bg-white/40'}`}
@@ -1592,7 +2032,7 @@ export default function Home() {
             style={{ maskImage: 'linear-gradient(to left, black 50%, transparent)' }} />
         </div>
 
-        <div className="w-full px-4 h-14 flex items-center justify-between relative z-10">
+        <div className={`w-full px-4 h-14 flex items-center justify-between relative z-10 ${isMobileOptimized ? 'gap-2' : ''}`}>
           <Link href="/" className="relative flex items-center gap-2.5 group px-1.5 py-1">
             <span
               aria-hidden="true"
@@ -1810,7 +2250,7 @@ export default function Home() {
       </header>
 
       {/* ── Hero Banner ─────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-blue-900/30 min-h-[400px] pt-14 flex items-center">
+      <section className={`relative overflow-hidden border-b border-blue-900/30 min-h-[400px] pt-14 flex items-center ${isMobileOptimized ? 'mobile-safe-bottom' : ''}`}>
         {/* Banner Background */}
         <div className="absolute inset-0 z-0">
           <img
@@ -1822,7 +2262,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-black/35 transition-opacity duration-300" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex flex-col items-center text-center gap-6 w-full">
+        <div className={`relative z-10 max-w-7xl mx-auto px-6 py-8 flex flex-col items-center text-center gap-6 w-full ${isMobileOptimized ? 'pt-10 pb-10' : ''}`}>
           <div className="max-w-3xl w-full">
             {/* Hero Title with soft text blur shadow */}
             <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight text-white drop-shadow-[0_6px_20px_rgba(0,0,0,1)] font-hero hover:opacity-[0.05] transition-opacity duration-500 ease-in-out cursor-default min-h-[90px] md:min-h-[150px] flex items-center justify-center">
@@ -1854,6 +2294,10 @@ export default function Home() {
               </div>
             </div>
           </div>
+          <PwaInstallPrompt
+            language={language}
+            className={`max-w-xl mx-auto ${isMobileOptimized ? 'w-full text-left' : ''}`}
+          />
         </div>
       </section>
 
@@ -1872,7 +2316,7 @@ export default function Home() {
         {/* Top edge glow */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/30 to-transparent z-10" />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-2 pb-20">
+        <div className={`relative z-10 max-w-7xl mx-auto px-6 pt-2 pb-20 ${isMobileOptimized ? 'mobile-safe-bottom-lg' : ''}`}>
 
           {/* Library Header: Title + Filters */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
@@ -2012,6 +2456,41 @@ export default function Home() {
                             className={`w-full h-full object-cover transition-transform duration-300 ease-out ${isDraft ? 'opacity-100 saturate-100 group-hover:scale-[1.03]' : 'group-hover:scale-105'}`}
                             loading="lazy"
                           />
+
+                          {/* Cover text overlays */}
+                          {comic.coverTextOverlays?.map((overlay: any) => (
+                              <div
+                                  key={overlay.id}
+                                  className="absolute pointer-events-none"
+                                  style={{
+                                      left: `${overlay.x}%`,
+                                      top: `${overlay.y}%`,
+                                      transform: `translate(-50%, -50%) rotate(${overlay.rotation || 0}deg)`,
+                                      zIndex: 15,
+                                  }}
+                              >
+                                  <span
+                                      style={{
+                                          fontFamily: overlay.fontFamily,
+                                          fontSize: Math.max(6, (overlay.fontSize || 48) * 0.25),
+                                          fontWeight: overlay.fontWeight,
+                                          fontStyle: overlay.fontStyle,
+                                          color: overlay.color,
+                                          textTransform: overlay.textTransform,
+                                          letterSpacing: (overlay.letterSpacing || 0) * 0.25,
+                                          lineHeight: overlay.lineHeight,
+                                          opacity: overlay.opacity ?? 1,
+                                          textShadow: overlay.shadowEnabled
+                                              ? `${(overlay.shadowOffsetX || 2) * 0.25}px ${(overlay.shadowOffsetY || 4) * 0.25}px ${(overlay.shadowBlur || 8) * 0.25}px ${overlay.shadowColor || 'rgba(0,0,0,0.7)'}`
+                                              : 'none',
+                                          whiteSpace: 'pre',
+                                          display: 'block',
+                                      }}
+                                  >
+                                      {overlay.text}
+                                  </span>
+                              </div>
+                          ))}
 
                           {/* Watermark on Cover */}
                           <img

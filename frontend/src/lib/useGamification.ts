@@ -21,6 +21,10 @@ export interface UserStats {
     level: number;
     badges: string[];
     school?: string;
+    currentStreak: number;
+    lastReadDate?: string;
+    displayName?: string;
+    photoURL?: string;
     totalReadingTime: number; // in seconds
     completedChapters: string[];
     completedBooks: string[];
@@ -107,6 +111,38 @@ const isBadgeRequirementMet = (stats: UserStats, badge: BadgeDefinition) => {
     return getBadgeProgress(stats, badge) >= badge.threshold;
 };
 
+const getTodayDateKey = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const getPreviousDateKey = (dateKey: string) => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() - 1);
+    const previousYear = date.getFullYear();
+    const previousMonth = String(date.getMonth() + 1).padStart(2, '0');
+    const previousDay = String(date.getDate()).padStart(2, '0');
+    return `${previousYear}-${previousMonth}-${previousDay}`;
+};
+
+const getProfileIdentity = (user: { displayName?: string | null; photoURL?: string | null }) => {
+    const profile: Pick<UserStats, 'displayName' | 'photoURL'> = {};
+
+    if (typeof user.displayName === 'string' && user.displayName.trim()) {
+        profile.displayName = user.displayName.trim();
+    }
+
+    if (typeof user.photoURL === 'string' && user.photoURL.trim()) {
+        profile.photoURL = user.photoURL.trim();
+    }
+
+    return profile;
+};
+
 export function useGamification() {
     const { user } = useAuth();
     const [stats, setStats] = useState<UserStats | null>(null);
@@ -124,6 +160,7 @@ export function useGamification() {
         try {
             const userRef = doc(db, 'users', user.uid);
             const userSnap = await getDoc(userRef);
+            const profileIdentity = getProfileIdentity(user);
 
             let baseStats: UserStats;
             if (userSnap.exists()) {
@@ -134,6 +171,8 @@ export function useGamification() {
                     badges: [],
                     level: 1,
                     xp: 0,
+                    currentStreak: 0,
+                    ...profileIdentity,
                     ...(userSnap.data() as Partial<UserStats>),
                 };
             } else {
@@ -141,6 +180,8 @@ export function useGamification() {
                     xp: 0,
                     level: 1,
                     badges: [],
+                    currentStreak: 0,
+                    ...profileIdentity,
                     totalReadingTime: 0,
                     completedChapters: [],
                     completedBooks: []
@@ -192,6 +233,89 @@ export function useGamification() {
     useEffect(() => {
         fetchStats();
     }, [fetchStats]);
+
+    const syncDailyStreak = useCallback(async (seconds: number) => {
+        if (!user || seconds <= 0) return;
+
+        const userRef = doc(db, 'users', user.uid);
+        const today = getTodayDateKey();
+        const yesterday = getPreviousDateKey(today);
+        const profileIdentity = getProfileIdentity(user);
+
+        try {
+            let nextStatsSnapshot: UserStats | null = null;
+
+            await runTransaction(db, async (transaction) => {
+                const userSnap = await transaction.get(userRef);
+
+                const baseStats: UserStats = userSnap.exists()
+                    ? {
+                        xp: 0,
+                        level: 1,
+                        badges: [],
+                        currentStreak: 0,
+                        totalReadingTime: 0,
+                        completedChapters: [],
+                        completedBooks: [],
+                        ...(userSnap.data() as Partial<UserStats>),
+                    }
+                    : {
+                        xp: 0,
+                        level: 1,
+                        badges: [],
+                        currentStreak: 0,
+                        ...profileIdentity,
+                        totalReadingTime: 0,
+                        completedChapters: [],
+                        completedBooks: [],
+                    };
+
+                const lastReadDate = typeof baseStats.lastReadDate === 'string' ? baseStats.lastReadDate : undefined;
+                const currentStreak = typeof baseStats.currentStreak === 'number' ? baseStats.currentStreak : 0;
+
+                let updatedStreak = currentStreak;
+                if (lastReadDate !== today) {
+                    updatedStreak = lastReadDate === yesterday ? currentStreak + 1 : 1;
+                }
+
+                nextStatsSnapshot = {
+                    ...baseStats,
+                    currentStreak: updatedStreak,
+                    lastReadDate: today,
+                    ...profileIdentity,
+                };
+
+                if (userSnap.exists()) {
+                    transaction.update(userRef, {
+                        currentStreak: updatedStreak,
+                        lastReadDate: today,
+                        ...profileIdentity,
+                    });
+                } else {
+                    transaction.set(userRef, nextStatsSnapshot);
+                }
+            });
+
+            if (nextStatsSnapshot) {
+                const resolvedStats = nextStatsSnapshot as UserStats;
+                setStats((prev) => prev ? {
+                    ...prev,
+                    currentStreak: resolvedStats.currentStreak,
+                    lastReadDate: resolvedStats.lastReadDate,
+                    displayName: resolvedStats.displayName,
+                    photoURL: resolvedStats.photoURL,
+                } : resolvedStats);
+            }
+        } catch (error) {
+            console.error("Error syncing daily streak:", error);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (!loading && user) {
+            syncDailyStreak(1);
+        }
+    }, [loading, user, syncDailyStreak]);
 
     const addXP = useCallback(async (amount: number) => {
         if (!user || !stats) return;
@@ -254,6 +378,8 @@ export function useGamification() {
                     xp: XP_PER_CHAPTER,
                     level: calculateLevel(XP_PER_CHAPTER),
                     badges: [],
+                    currentStreak: 0,
+                    ...getProfileIdentity(user),
                     totalReadingTime: 0,
                     completedChapters: [chapterKey],
                     completedBooks: []
@@ -308,6 +434,8 @@ export function useGamification() {
                         xp: XP_PER_BOOK,
                         level: calculateLevel(XP_PER_BOOK),
                         badges: [],
+                        currentStreak: 0,
+                        ...getProfileIdentity(user),
                         totalReadingTime: 0,
                         completedChapters: [],
                         completedBooks: [comicId]
@@ -372,6 +500,8 @@ export function useGamification() {
             const userRef = doc(db, 'users', user.uid);
             const xpGained = Math.floor(seconds / 60) * XP_PER_MINUTE;
 
+            await syncDailyStreak(seconds);
+
             const updates: {
                 totalReadingTime: ReturnType<typeof increment>;
                 xp?: ReturnType<typeof increment>;
@@ -409,7 +539,7 @@ export function useGamification() {
         } catch (error) {
             console.error("Error adding reading time:", error);
         }
-    }, [user, stats, checkBadges]);
+    }, [user, stats, checkBadges, syncDailyStreak]);
 
     const setSchool = useCallback(async (schoolName: string) => {
         if (!user) return;

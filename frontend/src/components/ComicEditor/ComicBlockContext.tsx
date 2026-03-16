@@ -30,6 +30,36 @@ export interface CharacterHotspot {
     radius: number; // % of image width
 }
 
+export interface CoverTextOverlay {
+    id: string;
+    text: string;
+    x: number;            // % from left
+    y: number;            // % from top
+    fontSize: number;     // px
+    fontFamily: string;
+    color: string;        // hex/rgba
+    fontWeight: number;   // 100-900
+    fontStyle: 'normal' | 'italic';
+    textTransform: 'none' | 'uppercase' | 'lowercase';
+    letterSpacing: number; // px
+    lineHeight: number;    // unitless multiplier
+    textAlign: 'left' | 'center' | 'right';
+    rotation: number;      // degrees
+    opacity: number;       // 0-1
+    // Text shadow
+    shadowEnabled: boolean;
+    shadowColor: string;
+    shadowBlur: number;
+    shadowOffsetX: number;
+    shadowOffsetY: number;
+    // Background
+    bgEnabled: boolean;
+    bgColor: string;
+    bgPaddingX: number;
+    bgPaddingY: number;
+    bgBorderRadius: number;
+}
+
 export interface Character {
     id: string;
     name: string;
@@ -74,6 +104,11 @@ interface ComicBlockContextType {
     addCharacter: () => void;
     updateCharacter: (id: string, changes: Partial<Omit<Character, 'id'>>) => void;
     removeCharacter: (id: string) => void;
+    // Cover text overlay functions
+    coverTextOverlays: CoverTextOverlay[];
+    addCoverText: () => void;
+    updateCoverText: (id: string, changes: Partial<Omit<CoverTextOverlay, 'id'>>) => void;
+    removeCoverText: (id: string) => void;
     saveComic: () => Promise<void>;
     publishComic: () => Promise<void>;
     initialDataLoaded: boolean;
@@ -104,6 +139,37 @@ function generateCharacterHotspotId(): string {
 function generateCharacterId(): string {
     return `char_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
+
+function generateCoverTextId(): string {
+    return `ctxt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+const DEFAULT_COVER_TEXT: Omit<CoverTextOverlay, 'id'> = {
+    text: '',
+    x: 50,
+    y: 20,
+    fontSize: 48,
+    fontFamily: 'BPGNinoTall',
+    color: '#ffffff',
+    fontWeight: 700,
+    fontStyle: 'normal',
+    textTransform: 'none',
+    letterSpacing: 0,
+    lineHeight: 1.2,
+    textAlign: 'center',
+    rotation: 0,
+    opacity: 1,
+    shadowEnabled: true,
+    shadowColor: 'rgba(0,0,0,0.7)',
+    shadowBlur: 8,
+    shadowOffsetX: 2,
+    shadowOffsetY: 4,
+    bgEnabled: false,
+    bgColor: 'rgba(0,0,0,0.5)',
+    bgPaddingX: 12,
+    bgPaddingY: 8,
+    bgBorderRadius: 4,
+};
 
 const MAX_HOTSPOTS_PER_BLOCK = 20;
 const DEFAULT_HOTSPOT_RADIUS = 6;
@@ -173,6 +239,7 @@ export function ComicBlockProvider({ children, comicId }: ComicBlockProviderProp
     const [category, setCategory] = useState('');
     const [coverUrl, setCoverUrl] = useState('');
     const [rawCoverUrl, setRawCoverUrl] = useState('');
+    const [coverTextOverlays, setCoverTextOverlays] = useState<CoverTextOverlay[]>([]);
     const [initialDataLoaded, setInitialDataLoaded] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -222,6 +289,7 @@ export function ComicBlockProvider({ children, comicId }: ComicBlockProviderProp
                     if (typeof data.category === 'string') setCategory(data.category);
                     if (data.coverUrl) setCoverUrl(data.coverUrl);
                     if (data.rawCoverUrl) setRawCoverUrl(data.rawCoverUrl);
+                    if (Array.isArray(data.coverTextOverlays)) setCoverTextOverlays(data.coverTextOverlays);
                 }
                 setInitialDataLoaded(true);
             } catch (error) {
@@ -486,6 +554,23 @@ export function ComicBlockProvider({ children, comicId }: ComicBlockProviderProp
         if (changes.rawCoverUrl !== undefined) setRawCoverUrl(changes.rawCoverUrl);
     }, []);
 
+    /* ── Cover Text Overlay Functions ── */
+
+    const addCoverText = useCallback(() => {
+        setCoverTextOverlays(prev => [
+            ...prev,
+            { ...DEFAULT_COVER_TEXT, id: generateCoverTextId() },
+        ]);
+    }, []);
+
+    const updateCoverText = useCallback((id: string, changes: Partial<Omit<CoverTextOverlay, 'id'>>) => {
+        setCoverTextOverlays(prev => prev.map(t => (t.id === id ? { ...t, ...changes } : t)));
+    }, []);
+
+    const removeCoverText = useCallback((id: string) => {
+        setCoverTextOverlays(prev => prev.filter(t => t.id !== id));
+    }, []);
+
     /* ─── Save / Publish ─── */
 
     // Firestore rejects `undefined` values strictly at any nesting level.
@@ -529,6 +614,7 @@ export function ComicBlockProvider({ children, comicId }: ComicBlockProviderProp
                 category,
                 coverUrl,
                 rawCoverUrl,
+                coverTextOverlays: cleanObject(coverTextOverlays),
                 updatedAt: serverTimestamp(),
             };
 
@@ -552,7 +638,7 @@ export function ComicBlockProvider({ children, comicId }: ComicBlockProviderProp
         } finally {
             setSaving(false);
         }
-    }, [blocks, characters, title, author, category, coverUrl, rawCoverUrl, comicId, router, t]);
+    }, [blocks, characters, title, author, category, coverUrl, rawCoverUrl, coverTextOverlays, comicId, router, t]);
 
     const publishComic = useCallback(async () => {
         if (!comicId) return;
@@ -571,6 +657,7 @@ export function ComicBlockProvider({ children, comicId }: ComicBlockProviderProp
                 category,
                 coverUrl,
                 rawCoverUrl,
+                coverTextOverlays: cleanObject(coverTextOverlays),
                 isPublished: true,
                 updatedAt: serverTimestamp(),
             });
@@ -583,7 +670,7 @@ export function ComicBlockProvider({ children, comicId }: ComicBlockProviderProp
         } finally {
             setSaving(false);
         }
-    }, [blocks, characters, title, author, category, coverUrl, rawCoverUrl, comicId, router, t]);
+    }, [blocks, characters, title, author, category, coverUrl, rawCoverUrl, coverTextOverlays, comicId, router, t]);
 
     return (
         <ComicBlockContext.Provider
@@ -610,6 +697,10 @@ export function ComicBlockProvider({ children, comicId }: ComicBlockProviderProp
                 addCharacter,
                 updateCharacter,
                 removeCharacter,
+                coverTextOverlays,
+                addCoverText,
+                updateCoverText,
+                removeCoverText,
                 saveComic,
                 publishComic,
                 initialDataLoaded,
