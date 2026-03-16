@@ -214,6 +214,12 @@ export const translations = {
         comicNotAvailable: 'ეს კომიქსი ამ ეტაპზე ხელმისაწვდომი არ არის.',
 
         // Leaderboard Details
+        streakLeaderboard: 'სტრიქის ლიდერბორდი',
+        dailyStreaks: 'დღიური სტრიქები',
+        streak: 'სტრიქი',
+        day: 'დღე',
+        days: 'დღე',
+        noStreaksYet: 'სტრიქები ჯერ არ არის.',
         battleOfSchools: 'სკოლების შერკინება',
         total: 'ჯამში',
         globalRankings: 'გლობალური რეიტინგი',
@@ -244,6 +250,19 @@ export const translations = {
         onlyImagesAllowed: 'გთხოვთ ატვირთოთ მხოლოდ JPG, PNG ან WEBP სურათი.',
         imageSizeLimit: 'სურათი არ უნდა იყოს 10MB-ზე დიდი.',
         uploadFailed: 'ატვირთვა ვერ მოხერხდა. სცადეთ თავიდან.',
+
+        // Cover Text Editor
+        coverText: 'გარეკანის ტექსტი',
+        addText: 'ტექსტის დამატება',
+        editCoverText: 'გარეკანის ტექსტის რედაქტირება',
+        fontFamily: 'შრიფტი',
+        fontSize: 'ზომა',
+        fontWeight: 'სისქე',
+        letterSpacing: 'ინტერვალი',
+        textShadow: 'ჩრდილი',
+        textBackground: 'ფონი',
+        textOpacity: 'გამჭვირვალობა',
+        coverTextHint: 'ტექსტის ფენები ჯერ არ არის',
     },
     en: {
         // General / Home
@@ -458,6 +477,12 @@ export const translations = {
         comicNotAvailable: 'This comic is not available right now.',
 
         // Leaderboard Details
+        streakLeaderboard: 'Streak Leaderboard',
+        dailyStreaks: 'Daily Streaks',
+        streak: 'Streak',
+        day: 'Day',
+        days: 'Days',
+        noStreaksYet: 'No streaks yet.',
         battleOfSchools: 'Battle of the Schools',
         total: 'Total',
         globalRankings: 'Global Rankings',
@@ -488,5 +513,18 @@ export const translations = {
         onlyImagesAllowed: 'Please upload only JPG, PNG, or WEBP images.',
         imageSizeLimit: 'Image size must be 10MB or less.',
         uploadFailed: 'Failed to upload image. Please try again.',
+
+        // Cover Text Editor
+        coverText: 'Cover Text',
+        addText: 'Add Text',
+        editCoverText: 'Edit Cover Text',
+        fontFamily: 'Font',
+        fontSize: 'Size',
+        fontWeight: 'Weight',
+        letterSpacing: 'Spacing',
+        textShadow: 'Shadow',
+        textBackground: 'Background',
+        textOpacity: 'Opacity',
+        coverTextHint: 'No text layers yet',
     },
 };

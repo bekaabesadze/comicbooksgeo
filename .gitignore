@@ -1,6 +1,7 @@
 # Secrets
 serviceAccountKey.json
 backend/serviceAccountKey.json
+*-firebase-adminsdk-*.json
 *.pem
 .env
 .env.local
@@ -38,3 +39,6 @@ Settings\ -\ *_files/
 # Copies/archives
 frontend\ copy/
 frontend.zip
+*.zip
+ziW55OPw
+ziqbABan

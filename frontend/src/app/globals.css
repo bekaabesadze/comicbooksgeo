@@ -81,6 +81,10 @@
 :root {
   --background: #ffffff;
   --foreground: #0a0a0a;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 .dark {
@@ -95,6 +99,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 html.theme-switching *,
@@ -239,6 +248,129 @@ html.mobile-optimized .comic-card-item {
 /* ── Mobile / Touch Optimizations ────────────────────────── */
 @media (hover: none),
 (max-width: 1024px) {
+  html.mobile-optimized {
+    --mobile-header-height: 3.75rem;
+    --mobile-tabbar-height: 4.5rem;
+    --mobile-shell-x: max(1rem, var(--safe-left));
+    --mobile-shell-y: max(0.9rem, calc(var(--safe-top) + 0.35rem));
+    --mobile-shell-bottom: max(0.9rem, calc(var(--safe-bottom) + 0.35rem));
+    --mobile-content-gap: 0.9rem;
+    --mobile-content-bottom: calc(var(--mobile-tabbar-height) + var(--mobile-shell-bottom) + 1rem);
+    --mobile-compressed-hero-height: clamp(11rem, 34vh, 15rem);
+    --mobile-sheet-radius: 1.75rem;
+    --mobile-card-radius: 1.5rem;
+  }
+
+  html.pwa-standalone.mobile-optimized {
+    --mobile-shell-y: max(1rem, calc(var(--safe-top) + 0.55rem));
+    --mobile-shell-bottom: max(1rem, calc(var(--safe-bottom) + 0.55rem));
+  }
+
+  html.mobile-optimized body {
+    overscroll-behavior-y: none;
+  }
+
+  html.mobile-optimized .mobile-app-shell {
+    min-height: 100svh;
+    padding-left: max(1rem, var(--safe-left));
+    padding-right: max(1rem, var(--safe-right));
+  }
+
+  html.mobile-optimized .mobile-safe-top {
+    padding-top: max(1rem, var(--safe-top));
+  }
+
+  html.mobile-optimized .mobile-safe-bottom {
+    padding-bottom: max(1rem, var(--safe-bottom));
+  }
+
+  html.mobile-optimized .mobile-safe-bottom-lg {
+    padding-bottom: max(1.5rem, calc(var(--safe-bottom) + 0.75rem));
+  }
+
+  html.mobile-optimized .mobile-core-screen {
+    min-height: 100svh;
+    padding-left: var(--mobile-shell-x);
+    padding-right: max(1rem, var(--safe-right));
+  }
+
+  html.pwa-standalone.mobile-optimized .mobile-core-screen {
+    min-height: 100dvh;
+  }
+
+  html.mobile-optimized .mobile-core-header {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    padding-top: var(--mobile-shell-y);
+  }
+
+  html.mobile-optimized .mobile-core-header-inner {
+    min-height: var(--mobile-header-height);
+    border-radius: calc(var(--mobile-card-radius) + 0.15rem);
+  }
+
+  html.mobile-optimized .mobile-core-content {
+    padding-top: var(--mobile-content-gap);
+    padding-bottom: 1rem;
+  }
+
+  html.mobile-optimized .mobile-core-content-with-tabs {
+    padding-bottom: var(--mobile-content-bottom);
+  }
+
+  html.mobile-optimized .mobile-core-tabbar {
+    position: fixed;
+    left: var(--mobile-shell-x);
+    right: max(1rem, var(--safe-right));
+    bottom: var(--mobile-shell-bottom);
+    min-height: var(--mobile-tabbar-height);
+    border-radius: calc(var(--mobile-card-radius) + 0.35rem);
+    padding: 0.45rem;
+    z-index: 70;
+  }
+
+  html.mobile-optimized .mobile-card {
+    border-radius: var(--mobile-card-radius);
+  }
+
+  html.mobile-optimized .mobile-sheet {
+    border-radius: var(--mobile-sheet-radius);
+  }
+
+  html.mobile-optimized .mobile-touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  html.mobile-optimized .mobile-horizontal-scroll {
+    display: flex;
+    gap: 0.6rem;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html.mobile-optimized .mobile-horizontal-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  html.mobile-optimized .mobile-compressed-hero {
+    min-height: var(--mobile-compressed-hero-height);
+  }
+
+  html.mobile-optimized .mobile-tabbar-offset {
+    padding-bottom: var(--mobile-content-bottom);
+  }
+
+  html.mobile-optimized .standalone-mobile-fill {
+    min-height: 100svh;
+  }
+
+  html.pwa-standalone.mobile-optimized .standalone-mobile-fill {
+    min-height: 100dvh;
+  }
 
   /* Kill ALL backdrop-blur on mobile — use solid bg instead */
   html.mobile-optimized .mobile-surface-blur {
@@ -283,6 +415,116 @@ html.mobile-optimized .comic-card-item {
   html.mobile-optimized .group-hover\:scale-\[1\.03\] {
     transform: none !important;
   }
+
+  html.mobile-optimized .pwa-install-card {
+    width: 100%;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(59, 130, 246, 0.18);
+    background:
+      linear-gradient(135deg, rgba(13, 18, 33, 0.94), rgba(8, 12, 20, 0.98));
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.32);
+    padding: 1rem;
+    color: #f8fbff;
+  }
+
+  html:not(.dark).mobile-optimized .pwa-install-card {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.98));
+    border-color: rgba(59, 130, 246, 0.14);
+    color: #0f172a;
+    box-shadow: 0 18px 42px rgba(30, 64, 175, 0.12);
+  }
+
+  html.mobile-optimized .pwa-install-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 1rem;
+    background: rgba(59, 130, 246, 0.14);
+    color: #60a5fa;
+    flex-shrink: 0;
+  }
+
+  html.mobile-optimized .pwa-install-eyebrow {
+    font-size: 0.65rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #60a5fa;
+    margin-bottom: 0.25rem;
+  }
+
+  html.mobile-optimized .pwa-install-title {
+    font-size: 1rem;
+    line-height: 1.2;
+    font-weight: 900;
+    margin-bottom: 0.35rem;
+  }
+
+  html.mobile-optimized .pwa-install-body {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: rgba(226, 232, 240, 0.9);
+  }
+
+  html:not(.dark).mobile-optimized .pwa-install-body {
+    color: rgba(15, 23, 42, 0.75);
+  }
+
+  html.mobile-optimized .pwa-install-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.7rem;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: rgba(191, 219, 254, 0.92);
+  }
+
+  html:not(.dark).mobile-optimized .pwa-install-hint {
+    color: rgba(29, 78, 216, 0.84);
+  }
+
+  html.mobile-optimized .pwa-install-primary,
+  html.mobile-optimized .pwa-install-secondary,
+  html.mobile-optimized .pwa-install-close {
+    min-height: 44px;
+  }
+
+  html.mobile-optimized .pwa-install-primary {
+    border-radius: 9999px;
+    padding: 0.7rem 1rem;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  html.mobile-optimized .pwa-install-secondary {
+    border-radius: 9999px;
+    padding: 0.7rem 0.95rem;
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    color: inherit;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  html.mobile-optimized .pwa-install-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9999px;
+    color: rgba(148, 163, 184, 0.9);
+  }
 }
 
 /* ── Tablet Optimizations (wider but still touch) ─────── */
@@ -308,5 +550,15 @@ html.mobile-optimized .comic-card-item {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (display-mode: standalone) {
+  html.mobile-optimized .mobile-safe-top {
+    padding-top: max(1.15rem, calc(var(--safe-top) + 0.25rem));
+  }
+
+  html.mobile-optimized .mobile-safe-bottom {
+    padding-bottom: max(1.15rem, calc(var(--safe-bottom) + 0.25rem));
   }
 }

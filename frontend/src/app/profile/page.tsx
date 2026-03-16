@@ -7,6 +7,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { useGamification, AVAILABLE_BADGES } from '@/lib/useGamification';
 import { Trophy, Star, Award, GraduationCap, ArrowLeft, Loader2, BookOpen, Clock, School, Lock, X } from 'lucide-react';
 import Link from 'next/link';
+import MobileScreenShell from '@/components/mobile/MobileScreenShell';
+import MobileTopBar from '@/components/mobile/MobileTopBar';
 
 const SCHOOLS = [
     { en: 'Tbilisi Classical Gymnasium', ka: 'თბილისის კლასიკური გიმნაზია' },
@@ -19,7 +21,7 @@ const SCHOOLS = [
 export default function ProfilePage() {
     const { user, loading: authLoading } = useAuth();
     const { t, language } = useLanguage();
-    const { theme } = useTheme();
+    const { theme, isMobileOptimized } = useTheme();
     const { stats, loading: statsLoading, setSchool } = useGamification();
     const [isUpdatingSchool, setIsUpdatingSchool] = useState(false);
     const [selectedBadgeId, setSelectedBadgeId] = useState<string | null>(null);
@@ -27,6 +29,30 @@ export default function ProfilePage() {
     const isDark = theme === 'dark';
 
     if (authLoading || statsLoading) {
+        if (isMobileOptimized) {
+            return (
+                <MobileScreenShell
+                    className={`${isDark ? 'bg-[#07111d] text-white' : 'bg-[#f3f7fb] text-neutral-900'}`}
+                    topBar={(
+                        <MobileTopBar
+                            title={t.profile}
+                            leading={(
+                                <Link
+                                    href="/"
+                                    className={`mobile-touch-target flex h-11 w-11 items-center justify-center rounded-2xl border ${isDark ? 'border-white/10 bg-white/6 text-white' : 'border-neutral-200 bg-white text-neutral-900 shadow-sm'}`}
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                </Link>
+                            )}
+                        />
+                    )}
+                >
+                    <div className={`mobile-card border p-8 text-center shadow-sm ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                        <Loader2 className="mx-auto h-7 w-7 animate-spin text-blue-500" />
+                    </div>
+                </MobileScreenShell>
+            );
+        }
         return (
             <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-[#0d0d0d]' : 'bg-neutral-50'}`}>
                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -34,7 +60,7 @@ export default function ProfilePage() {
         );
     }
 
-    if (!user) {
+    if (!user && !isMobileOptimized) {
         return (
             <div className={`min-h-screen flex flex-col items-center justify-center p-6 ${isDark ? 'bg-[#0d0d0d] text-white' : 'bg-neutral-50 text-neutral-900'}`}>
                 <h1 className="text-2xl font-black mb-4">{t.profile}</h1>
@@ -157,6 +183,236 @@ export default function ProfilePage() {
     const selectedBadgeProgressPercent = Math.min(100, Math.max(0, (selectedBadgeProgress / selectedBadgeThreshold) * 100));
     const selectedBadgeUnlocked = selectedBadge ? !!stats?.badges.includes(selectedBadge.id) : false;
     const selectedBadgeTheme = selectedBadge ? getColorTheme(selectedBadge.color) : null;
+    const readerName = user?.displayName || 'Reader';
+
+    if (isMobileOptimized) {
+        return (
+            <MobileScreenShell
+                className={`${isDark ? 'bg-[#07111d] text-white' : 'bg-[#f3f7fb] text-neutral-900'}`}
+                topBar={(
+                    <MobileTopBar
+                        title={t.profile}
+                        subtitle={user ? readerName : t.backHome}
+                        leading={(
+                            <Link
+                                href="/"
+                                className={`mobile-touch-target flex h-11 w-11 items-center justify-center rounded-2xl border ${isDark ? 'border-white/10 bg-white/6 text-white' : 'border-neutral-200 bg-white text-neutral-900 shadow-sm'}`}
+                            >
+                                <ArrowLeft className="h-4 w-4" />
+                            </Link>
+                        )}
+                        actions={user ? (
+                            <div className={`rounded-2xl border px-3 py-2 text-right ${isDark ? 'border-white/10 bg-white/6' : 'border-neutral-200 bg-white shadow-sm'}`}>
+                                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-blue-500">{t.level}</div>
+                                <div className="text-xs font-black">{stats?.level || 1}</div>
+                            </div>
+                        ) : null}
+                    />
+                )}
+            >
+                {!user ? (
+                    <section className={`mobile-card border p-6 text-center shadow-sm ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                        <h1 className="text-xl font-black">{t.profile}</h1>
+                        <p className={`mt-3 text-sm ${isDark ? 'text-white/70' : 'text-neutral-600'}`}>{t.loginToSeeProfile}</p>
+                        <Link href="/" className="mt-5 inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-blue-600 px-5 text-sm font-black uppercase tracking-[0.16em] text-white">
+                            {t.backHome}
+                        </Link>
+                    </section>
+                ) : (
+                    <div className="space-y-4">
+                        <section className={`mobile-card border p-4 shadow-sm ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                            <div className="flex items-center gap-4">
+                                <div className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.8rem] border text-2xl font-black ${isDark ? 'border-blue-500/30 bg-blue-500/10 text-blue-300' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+                                    {stats?.level || 1}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-3">
+                                    <h1 className="truncate text-xl font-black">{readerName}</h1>
+                                        <span className="shrink-0 text-[10px] font-black uppercase tracking-[0.16em] text-blue-500">{stats?.xp || 0} XP</span>
+                                    </div>
+                                    <div className={`mt-3 h-3 overflow-hidden rounded-full ${isDark ? 'bg-white/8' : 'bg-neutral-100'}`}>
+                                        <div className="h-full bg-blue-600" style={{ width: `${progressPercent}%` }} />
+                                    </div>
+                                    <div className={`mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-white/48' : 'text-neutral-500'}`}>
+                                        <span>{t.level} {stats?.level || 1}</span>
+                                        <span>{Math.round(progressPercent)}% {t.toLevel} {(stats?.level || 1) + 1}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="grid grid-cols-3 gap-3">
+                            <div className={`mobile-card border p-3 ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/12 text-blue-500">
+                                    <BookOpen className="h-4 w-4" />
+                                </div>
+                                <div className="text-lg font-black">{stats?.completedChapters.length || 0}</div>
+                                <div className={`pt-1 text-[9px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-white/52' : 'text-neutral-500'}`}>{t.chapters}</div>
+                            </div>
+                            <div className={`mobile-card border p-3 ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/12 text-orange-500">
+                                    <Clock className="h-4 w-4" />
+                                </div>
+                                <div className="text-lg font-black">{formatTime(stats?.totalReadingTime || 0)}</div>
+                                <div className={`pt-1 text-[9px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-white/52' : 'text-neutral-500'}`}>{t.time}</div>
+                            </div>
+                            <div className={`mobile-card border p-3 ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-500/12 text-purple-500">
+                                    <School className="h-4 w-4" />
+                                </div>
+                                <div className="line-clamp-2 text-sm font-black leading-tight">{stats?.school || t.notSet}</div>
+                                <div className={`pt-1 text-[9px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-white/52' : 'text-neutral-500'}`}>{t.school}</div>
+                            </div>
+                        </section>
+
+                        <section className={`mobile-card border p-4 shadow-sm ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                            <div className="mb-4 flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-500/12 text-blue-500">
+                                    <GraduationCap className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-black">{t.selectSchool}</h2>
+                                    <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-white/48' : 'text-neutral-500'}`}>{t.school}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                {SCHOOLS.map((school) => (
+                                    <button
+                                        key={school.en}
+                                        onClick={async () => {
+                                            if (isUpdatingSchool) return;
+                                            setIsUpdatingSchool(true);
+                                            try {
+                                                await setSchool(school[language]);
+                                            } finally {
+                                                setIsUpdatingSchool(false);
+                                            }
+                                        }}
+                                        disabled={isUpdatingSchool}
+                                        className={`mobile-touch-target w-full rounded-2xl border px-4 py-3 text-left text-sm font-bold transition-colors ${stats?.school === school[language]
+                                            ? 'border-blue-600 bg-blue-600 text-white'
+                                            : isDark ? 'border-white/10 bg-black/20 text-white' : 'border-neutral-200 bg-neutral-50 text-neutral-900'
+                                        }`}
+                                    >
+                                        <span className="block truncate">{school[language]}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className={`mobile-card border p-4 shadow-sm ${isDark ? 'border-white/10 bg-[#0d1829]' : 'border-white bg-white'}`}>
+                            <div className="mb-4 flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-yellow-500/12 text-yellow-500">
+                                    <Award className="h-4 w-4" />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-black">{t.badges}</h2>
+                                    <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-white/48' : 'text-neutral-500'}`}>
+                                        {typeof translationMap.tapForDetails === 'string'
+                                            ? translationMap.tapForDetails
+                                            : 'Tap any badge to see unlock details'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                {AVAILABLE_BADGES.map((badge) => {
+                                    const isUnlocked = stats?.badges.includes(badge.id);
+                                    const Icon = getBadgeIcon(badge.icon);
+                                    const themeSet = getColorTheme(badge.color);
+                                    const progress = getBadgeProgressValue(badge.requirementType);
+                                    const clampedProgress = Math.min(100, Math.max(0, (progress / badge.threshold) * 100));
+
+                                    return (
+                                        <button
+                                            key={badge.id}
+                                            type="button"
+                                            onClick={() => setSelectedBadgeId(badge.id)}
+                                            aria-label={`${getBadgeName(badge.nameKey, badge.id)} ${isUnlocked ? t.unlocked : ''}`}
+                                            className={`relative mobile-card border p-3 text-center transition-transform ${isUnlocked
+                                                ? `bg-gradient-to-br ${themeSet.card}`
+                                                : isDark ? 'border-white/10 bg-black/20 text-white/55' : 'border-neutral-200 bg-neutral-50 text-neutral-500'
+                                            }`}
+                                        >
+                                            {!isUnlocked ? (
+                                                <Lock className="absolute right-2 top-2 h-3 w-3 opacity-50" />
+                                            ) : null}
+                                            <div className={`mx-auto flex h-11 w-11 items-center justify-center rounded-2xl ${isUnlocked ? themeSet.iconBg : 'bg-neutral-500/10'}`}>
+                                                <Icon className={`h-5 w-5 ${isUnlocked ? `${themeSet.icon} fill-current` : 'text-neutral-500'}`} />
+                                            </div>
+                                            <div className="pt-3 text-[10px] font-black uppercase tracking-[0.12em]">
+                                                {getBadgeName(badge.nameKey, badge.id)}
+                                            </div>
+                                            <div className={`mt-2 h-1.5 overflow-hidden rounded-full ${isDark ? 'bg-white/8' : 'bg-neutral-200'}`}>
+                                                <div className={`h-full bg-gradient-to-r ${themeSet.progress}`} style={{ width: `${clampedProgress}%` }} />
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    </div>
+                )}
+
+                {selectedBadge && selectedBadgeTheme ? (
+                    <div className="fixed inset-0 z-[90] flex items-end justify-center p-4">
+                        <div className="absolute inset-0 bg-black/60" onClick={() => setSelectedBadgeId(null)} />
+                        <div className={`mobile-sheet relative w-full max-w-md border p-5 shadow-2xl bg-gradient-to-br ${selectedBadgeTheme.popupBg} ${selectedBadgeTheme.popupBorder} ${isDark ? 'bg-[#0d1829] text-white' : 'bg-white text-neutral-900'}`}>
+                            <button
+                                type="button"
+                                className={`absolute right-4 top-4 mobile-touch-target flex h-10 w-10 items-center justify-center rounded-full ${isDark ? 'hover:bg-white/8' : 'hover:bg-neutral-100'}`}
+                                onClick={() => setSelectedBadgeId(null)}
+                                aria-label="Close badge details"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+
+                            {(() => {
+                                const Icon = getBadgeIcon(selectedBadge.icon);
+                                return (
+                                    <div className="flex items-start gap-4">
+                                        <div className={`flex h-16 w-16 items-center justify-center rounded-[1.4rem] ${selectedBadgeTheme.iconBg}`}>
+                                            <Icon className={`h-7 w-7 ${selectedBadgeTheme.icon} fill-current`} />
+                                        </div>
+                                        <div className="pr-10">
+                                            <h3 className="text-lg font-black uppercase tracking-wide">{getBadgeName(selectedBadge.nameKey, selectedBadge.id)}</h3>
+                                            {selectedBadgeUnlocked ? (
+                                                <span className="mt-2 inline-flex rounded-full border border-green-500/30 bg-green-500/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-green-400">
+                                                    {t.unlocked}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            <div className={`mt-5 mobile-card border p-4 ${isDark ? 'border-white/10 bg-black/20' : 'border-neutral-200 bg-white/80'}`}>
+                                <p className={`mb-2 text-[10px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-white/52' : 'text-neutral-500'}`}>
+                                    {typeof translationMap.howToUnlock === 'string' ? translationMap.howToUnlock : 'How to unlock'}
+                                </p>
+                                <p className="text-sm font-bold leading-relaxed">{getBadgeRequirement(selectedBadge.requirementKey)}</p>
+                            </div>
+                            <div className={`mt-4 mobile-card border p-4 ${isDark ? 'border-white/10 bg-black/20' : 'border-neutral-200 bg-white/80'}`}>
+                                <div className="mb-2 flex items-center justify-between gap-3">
+                                    <p className={`text-[10px] font-black uppercase tracking-[0.16em] ${isDark ? 'text-white/52' : 'text-neutral-500'}`}>
+                                        {typeof translationMap.progress === 'string' ? translationMap.progress : 'Progress'}
+                                    </p>
+                                    <span className="text-xs font-black">
+                                        {getBadgeProgressLabel(selectedBadge.requirementType, selectedBadgeProgress, selectedBadge.threshold)}
+                                    </span>
+                                </div>
+                                <div className={`h-2.5 overflow-hidden rounded-full ${isDark ? 'bg-white/8' : 'bg-neutral-200'}`}>
+                                    <div
+                                        className={`h-full bg-gradient-to-r ${selectedBadgeTheme.progress}`}
+                                        style={{ width: `${selectedBadgeProgressPercent}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+            </MobileScreenShell>
+        );
+    }
 
     return (
         <div className={`min-h-screen ${isDark ? 'bg-[#0d0d0d] text-white' : 'bg-neutral-50 text-neutral-900'} p-4 md:p-8 pt-24`}>
@@ -186,7 +442,7 @@ export default function ProfilePage() {
                         {/* XP Progress */}
                         <div className="flex-1 w-full">
                             <div className="flex items-center justify-between mb-2">
-                                <h2 className="text-2xl font-black">{user.displayName || 'Reader'}</h2>
+                                <h2 className="text-2xl font-black">{readerName}</h2>
                                 <span className="text-sm font-black text-blue-500 uppercase tracking-widest">{stats?.xp || 0} XP</span>
                             </div>
                             <div className={`h-4 w-full rounded-full overflow-hidden mb-2 ${isDark ? 'bg-neutral-800' : 'bg-neutral-100'}`}>

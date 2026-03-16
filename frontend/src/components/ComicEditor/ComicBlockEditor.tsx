@@ -12,6 +12,7 @@ import PageImageCropper from './PageImageCropper';
 import BubbleEditor from './BubbleEditor';
 import CharacterHotspotEditor from './CharacterHotspotEditor';
 import CharacterManagement from './CharacterManagement';
+import CoverTextEditor from './CoverTextEditor';
 
 type ChapterItem = {
     id: string;
@@ -424,8 +425,9 @@ function BlockCard({ blockId, index, total }: { blockId: string; index: number; 
 
 function ComicSettings() {
     const { t, language } = useLanguage();
-    const { title, author, category, coverUrl, rawCoverUrl, updateMetadata } = useComicBlocks();
+    const { title, author, category, coverUrl, rawCoverUrl, updateMetadata, coverTextOverlays } = useComicBlocks();
     const [showCropper, setShowCropper] = useState(false);
+    const [showTextEditor, setShowTextEditor] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const suggestedCategory = inferBookCategory(title)?.[language] || '';
@@ -550,7 +552,42 @@ function ComicSettings() {
                                 )}
                                 {coverUrl ? (
                                     <>
-                                        <img src={coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition-all duration-700 ease-out" />
+                                         <img src={coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition-all duration-700 ease-out" />
+
+                                        {/* Cover text overlays preview */}
+                                        {coverTextOverlays.map(overlay => (
+                                            <div
+                                                key={overlay.id}
+                                                className="absolute pointer-events-none"
+                                                style={{
+                                                    left: `${overlay.x}%`,
+                                                    top: `${overlay.y}%`,
+                                                    transform: `translate(-50%, -50%) rotate(${overlay.rotation}deg)`,
+                                                    zIndex: 15,
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        fontFamily: overlay.fontFamily,
+                                                        fontSize: Math.max(6, overlay.fontSize * 0.2),
+                                                        fontWeight: overlay.fontWeight,
+                                                        fontStyle: overlay.fontStyle,
+                                                        color: overlay.color,
+                                                        textTransform: overlay.textTransform,
+                                                        letterSpacing: overlay.letterSpacing * 0.2,
+                                                        lineHeight: overlay.lineHeight,
+                                                        opacity: overlay.opacity,
+                                                        textShadow: overlay.shadowEnabled
+                                                            ? `${overlay.shadowOffsetX * 0.2}px ${overlay.shadowOffsetY * 0.2}px ${overlay.shadowBlur * 0.2}px ${overlay.shadowColor}`
+                                                            : 'none',
+                                                        whiteSpace: 'pre',
+                                                        display: 'block',
+                                                    }}
+                                                >
+                                                    {overlay.text}
+                                                </span>
+                                            </div>
+                                        ))}
 
                                         {/* Watermark on Cover in Editor Settings */}
                                         <img
@@ -615,6 +652,18 @@ function ComicSettings() {
                                             </button>
                                         </div>
                                     )}
+                                    {coverUrl && (
+                                        <button
+                                            onClick={() => setShowTextEditor(true)}
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition-all border border-purple-400/30 active:scale-95 shadow-lg shadow-purple-500/20"
+                                        >
+                                            <Type className="w-4 h-4" />
+                                            {(t as any).coverText || 'Cover Text'}
+                                            {coverTextOverlays.length > 0 && (
+                                                <span className="bg-purple-400/30 text-purple-200 text-[10px] font-black px-1.5 py-0.5 rounded-full">{coverTextOverlays.length}</span>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                                 <p className="text-xs text-neutral-500 leading-relaxed">
                                     {t.coverImageHint}
@@ -634,6 +683,12 @@ function ComicSettings() {
                         setShowCropper(false);
                     }}
                     onCancel={() => setShowCropper(false)}
+                />
+            )}
+            {showTextEditor && coverUrl && (
+                <CoverTextEditor
+                    imageUrl={coverUrl}
+                    onClose={() => setShowTextEditor(false)}
                 />
             )}
         </div>
