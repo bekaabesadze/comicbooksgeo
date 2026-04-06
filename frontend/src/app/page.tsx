@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
-import { X, Loader2, BookOpen, Globe, Sun, Moon, Search, Users, Heart, LogIn, LogOut, Eye, Info, ArrowLeft, CheckCircle2, Send } from 'lucide-react';
+import { X, Loader2, BookOpen, Globe, Search, Users, Heart, LogIn, LogOut, Eye, Info, ArrowLeft, CheckCircle2, Send } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
@@ -894,7 +894,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                       )}
                       {(block.croppedImageUrl || block.imageUrl) && (
                         <div className={`px-4 pb-4 ${block.text ? 'pt-0' : 'pt-4'}`}>
-                          <div className="relative w-full rounded-xl overflow-hidden shadow-sm border border-black/5">
+                          <div className="relative w-full rounded-xl overflow-hidden shadow-sm border border-black/5" style={{ containerType: 'inline-size' }}>
                             <img
                               src={block.croppedImageUrl || block.imageUrl}
                               alt={`Panel ${i + 1}`}
@@ -949,7 +949,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                                   zIndex: 10,
                                 }}
                               >
-                                <div className="relative" style={{ width: 90 * bubble.scale, height: 90 * bubble.scale }}>
+                                <div className="relative" style={{ width: `${(90 * bubble.scale / 640) * 100}%`, aspectRatio: '1 / 1' }}>
                                   <img
                                     src={`/bubbles/${bubble.bubbleType}.png`}
                                     alt=""
@@ -959,8 +959,8 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
                                     className="font-bubble absolute inset-0 flex items-center justify-center text-center text-black font-bold"
                                     style={{
                                       fontFamily: 'BPGNinoTall',
-                                      fontSize: Math.max(7, 90 * bubble.scale * 0.13),
-                                      padding: `${90 * bubble.scale * 0.2}px ${90 * bubble.scale * 0.15}px`,
+                                      fontSize: `clamp(6px, ${(90 * bubble.scale * 0.13 / 640) * 100}cqi, ${90 * bubble.scale * 0.13}px)`,
+                                      padding: '20% 15%',
                                       lineHeight: 1.2,
                                       wordBreak: 'break-word',
                                     }}
@@ -1440,7 +1440,7 @@ function ComicReaderModal({ comic, onClose }: { comic: ComicData; onClose: () =>
 // ─── Home Page ─────────────────────────────────────────────────────────────────
 export default function Home() {
   const { language, setLanguage, t } = useLanguage();
-  const { theme, toggleTheme, isMobileOptimized } = useTheme();
+  const { theme, isMobileOptimized } = useTheme();
   const router = useRouter();
   const { user, signInWithGoogle, signOut, loading: authLoading } = useAuth();
   const [comics, setComics] = useState<ComicData[]>([]);
@@ -1612,13 +1612,6 @@ export default function Home() {
             )}
             actions={(
               <>
-                <button
-                  onClick={toggleTheme}
-                  aria-label="Toggle Theme"
-                  className={`mobile-touch-target flex h-11 w-11 items-center justify-center rounded-2xl border transition-colors ${isDark ? 'border-white/10 bg-white/6 text-amber-300' : 'border-neutral-200 bg-white text-blue-700 shadow-sm'}`}
-                >
-                  {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </button>
                 <button
                   onClick={() => setLanguage(language === 'ka' ? 'en' : 'ka')}
                   aria-label="Toggle Language"
@@ -2054,35 +2047,6 @@ export default function Home() {
           </Link>
 
           <div className="flex items-center gap-2">
-            {/* Theme Toggle — pill slider */}
-            <button
-              onClick={toggleTheme}
-              aria-label="Toggle Theme"
-              className={`relative flex items-center w-[56px] h-[28px] rounded-full p-1 transition-colors duration-300 mobile-fast-transition shadow-xl mobile-surface-blur-soft border focus:outline-none gpu-layer ${isDark
-                ? 'bg-[#0a0f1e] border-blue-900/50'
-                : 'bg-amber-50/80 border-amber-200/60'
-                }`}
-            >
-              {/* Sliding knob */}
-              <span
-                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-[22px] h-[22px] rounded-full shadow-lg transition-[left] duration-300 mobile-fast-transition ease-[cubic-bezier(0.34,1.56,0.64,1)] gpu-layer ${isDark
-                  ? 'left-1 bg-gradient-to-br from-slate-600 to-slate-800'
-                  : 'left-[30px] bg-gradient-to-br from-amber-300 to-orange-400'
-                  }`}
-              >
-                {/* Moon icon — visible in dark mode */}
-                <Moon
-                  className={`absolute w-3 h-3 text-blue-200 transition-all duration-300 ${isDark ? 'opacity-100 scale-100 rotate-0' : 'opacity-0 scale-50 rotate-90'
-                    }`}
-                />
-                {/* Sun icon — visible in light mode */}
-                <Sun
-                  className={`absolute w-3 h-3 text-white transition-all duration-300 ${isDark ? 'opacity-0 scale-50 -rotate-90' : 'opacity-100 scale-100 rotate-0'
-                    }`}
-                />
-              </span>
-            </button>
-
             {/* Language Toggle — pill slider */}
             <button
               onClick={() => setLanguage(language === 'ka' ? 'en' : 'ka')}
@@ -2158,26 +2122,26 @@ export default function Home() {
                             <button
                               onClick={async () => {
                                 const { updateProfile } = await import('firebase/auth');
-                                if (user) await updateProfile(user, { photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack&backgroundColor=b6e3f4' });
+                                if (user) await updateProfile(user, { photoURL: '/avatar-male.svg' });
                                 window.location.reload();
                               }}
                               className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${isDark ? 'border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'border-neutral-100 hover:bg-neutral-50 text-neutral-500 hover:text-neutral-900'}`}
                             >
-                              <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-500/10 flex items-center justify-center">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jack&backgroundColor=b6e3f4" alt="Male" className="w-full h-full" />
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-neutral-800 flex items-center justify-center">
+                                <img src="/avatar-male.svg" alt="Male" className="w-full h-full p-1" />
                               </div>
                               <span className="text-[9px] font-bold uppercase">{t.male}</span>
                             </button>
                             <button
                               onClick={async () => {
                                 const { updateProfile } = await import('firebase/auth');
-                                if (user) await updateProfile(user, { photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Molly&backgroundColor=ffdfbf' });
+                                if (user) await updateProfile(user, { photoURL: '/avatar-female.svg' });
                                 window.location.reload();
                               }}
                               className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${isDark ? 'border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'border-neutral-100 hover:bg-neutral-50 text-neutral-500 hover:text-neutral-900'}`}
                             >
-                              <div className="w-8 h-8 rounded-full overflow-hidden bg-pink-500/10 flex items-center justify-center">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Molly&backgroundColor=ffdfbf" alt="Female" className="w-full h-full" />
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-neutral-800 flex items-center justify-center">
+                                <img src="/avatar-female.svg" alt="Female" className="w-full h-full p-1" />
                               </div>
                               <span className="text-[9px] font-bold uppercase">{t.female}</span>
                             </button>
@@ -2332,7 +2296,7 @@ export default function Home() {
             </div>
 
             {/* Filters */}
-            <div className={`relative flex items-center p-1.5 rounded-full border shadow-sm ${isDark ? 'bg-[#0d0d0d] border-neutral-800' : 'bg-white border-neutral-200'}`}>
+            <div className={`relative flex items-center p-1 rounded-full border backdrop-blur-xl ${isDark ? 'bg-[#0d0d0d]/80 border-neutral-800/50' : 'bg-white/80 border-neutral-200/50'}`}>
               {[
                 { id: 'all', label: t.allMaterials },
                 { id: 'school', label: t.schoolMaterial },
@@ -2346,13 +2310,13 @@ export default function Home() {
                       setMaterialFilter(f.id as any);
                       if (f.id === 'non-school') setGradeFilter('all');
                     }}
-                    className={`relative px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-colors duration-200 z-10 ${isActive
+                    className={`relative px-7 py-3 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all duration-500 z-10 ${isActive
                       ? 'text-white'
-                      : isDark ? 'text-neutral-500 hover:text-neutral-300' : 'text-neutral-500 hover:text-neutral-800'
+                      : isDark ? 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.04]' : 'text-neutral-500 hover:text-neutral-800 hover:bg-black/[0.03]'
                       }`}
                   >
                     {isActive && (
-                      <div className="absolute inset-0 bg-blue-600 rounded-full -z-10 shadow-[0_0_15px_rgba(37,99,235,0.4)] animate-in zoom-in-95 duration-300" />
+                      <div className="absolute inset-0 bg-blue-600 rounded-full -z-10 border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.2)] animate-in zoom-in-95 duration-300" />
                     )}
                     {f.label}
                   </button>
@@ -2368,15 +2332,15 @@ export default function Home() {
             <div className="flex flex-wrap items-center gap-2 mt-2">
               <button
                 onClick={() => setGradeFilter('all')}
-                className={`relative px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors duration-200 z-10 ${gradeFilter === 'all'
+                className={`relative px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-500 z-10 ${gradeFilter === 'all'
                   ? 'text-white'
-                  : isDark ? 'text-neutral-400 bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800' : 'text-neutral-600 bg-white hover:bg-neutral-50 border border-neutral-200'
+                  : isDark ? 'text-neutral-400 bg-neutral-900/40 hover:bg-neutral-800/80 border border-neutral-800/50 hover:text-neutral-200' : 'text-neutral-600 bg-white hover:bg-neutral-50 border border-neutral-200'
                   }`}
               >
                 {gradeFilter === 'all' && (
                   <div className={`absolute inset-0 rounded-full -z-10 animate-in zoom-in-95 duration-300 ${isDark
-                    ? 'bg-neutral-800 shadow-[0_0_12px_rgba(255,255,255,0.1)]'
-                    : 'bg-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.35)]'
+                    ? 'bg-neutral-800 border border-neutral-700/50 shadow-[0_0_8px_rgba(255,255,255,0.06)]'
+                    : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.2)]'
                     }`} />
                 )}
                 {t.allMaterials}
@@ -2385,13 +2349,13 @@ export default function Home() {
                 <button
                   key={g}
                   onClick={() => setGradeFilter(g)}
-                  className={`relative px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-colors duration-200 z-10 ${gradeFilter === g
+                  className={`relative px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-500 z-10 ${gradeFilter === g
                     ? 'text-white'
-                    : isDark ? 'text-neutral-400 bg-neutral-900/50 hover:bg-neutral-800 border border-neutral-800' : 'text-neutral-600 bg-white hover:bg-neutral-50 border border-neutral-200'
+                    : isDark ? 'text-neutral-400 bg-neutral-900/40 hover:bg-neutral-800/80 border border-neutral-800/50 hover:text-neutral-200' : 'text-neutral-600 bg-white hover:bg-neutral-50 border border-neutral-200'
                     }`}
                 >
                   {gradeFilter === g && (
-                    <div className="absolute inset-0 bg-blue-600 rounded-full -z-10 shadow-[0_0_12px_rgba(37,99,235,0.4)] animate-in zoom-in-95 duration-300" />
+                    <div className="absolute inset-0 bg-blue-600 rounded-full -z-10 border border-blue-500/20 shadow-[0_0_10px_rgba(59,130,246,0.2)] animate-in zoom-in-95 duration-300" />
                   )}
                   {t.gradeLabel(g)}
                 </button>

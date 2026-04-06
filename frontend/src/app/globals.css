@@ -2,7 +2,7 @@
 
 @font-face {
   font-family: 'BPGNino';
-  src: url('/fonts/bpg_nino_mtavruli_bold.ttf') format('truetype');
+  src: url('/fonts/bpg_nino_mtavruli_bold.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -11,7 +11,7 @@
 /* Georgian comic text – used for all typed and pasted comic content */
 @font-face {
   font-family: 'GeoText';
-  src: url('/fonts/geo_text.ttf') format('truetype');
+  src: url('/fonts/geo_text.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -19,7 +19,7 @@
 
 @font-face {
   font-family: 'BPGNinoNormal';
-  src: url('/fonts/normal.ttf') format('truetype');
+  src: url('/fonts/normal.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -27,7 +27,7 @@
 
 @font-face {
   font-family: 'BPGNinoTall';
-  src: url('/fonts/tall.ttf') format('truetype');
+  src: url('/fonts/tall.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -35,7 +35,7 @@
 
 @font-face {
   font-family: 'BPGNinoEnd';
-  src: url('/fonts/end.ttf') format('truetype');
+  src: url('/fonts/end.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -43,7 +43,7 @@
 
 @font-face {
   font-family: 'BPGNinoSquare';
-  src: url('/fonts/square.ttf') format('truetype');
+  src: url('/fonts/square.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;

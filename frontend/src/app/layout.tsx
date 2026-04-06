@@ -3,6 +3,7 @@ import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { AuthProvider } from "@/context/AuthContext";
+import LoadingScreen from "@/components/LoadingScreen";
 import PwaBoot from "@/components/pwa/PwaBoot";
 
 export const metadata: Metadata = {
@@ -39,6 +40,7 @@ export default function RootLayout({
   return (
     <html lang="ka" suppressHydrationWarning>
       <body className="antialiased" suppressHydrationWarning>
+        <LoadingScreen />
         <PwaBoot />
         <ThemeProvider>
           <AuthProvider>

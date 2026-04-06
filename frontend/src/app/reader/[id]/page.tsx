@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowUp, ArrowDown, Loader2, Sun, Moon, Users, X, LogOut, Clock, BookOpen, Info, Tag, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ArrowDown, Loader2, Users, X, LogOut, Clock, BookOpen, Info, Tag, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -118,7 +118,7 @@ function sanitizeReaderBlocks(rawBlocks: unknown, validCharacterIds: Set<string>
 
 export default function ReaderPage({ params }: { params: Promise<{ id: string }> }) {
     const { t, language } = useLanguage();
-    const { theme, toggleTheme, isMobileOptimized } = useTheme();
+    const { theme, isMobileOptimized } = useTheme();
     const { id } = React.use(params);
     const [blocks, setBlocks] = useState<ComicBlock[]>([]);
     const [loading, setLoading] = useState(true);
@@ -149,7 +149,9 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
     const [isEntering, setIsEntering] = useState(true);
     const [canScrollUp, setCanScrollUp] = useState(false);
     const [canScrollDown, setCanScrollDown] = useState(true);
+    const [mobileHeaderVisible, setMobileHeaderVisible] = useState(true);
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    const lastScrollYRef = React.useRef(0);
     const readingTimeRef = React.useRef(0);
     const blocksRef = React.useRef<ComicBlock[]>([]);
     const hasMarkedBookCompletionRef = React.useRef(false);
@@ -744,7 +746,19 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
         if (!container) return;
 
         updateArrowButtonState();
-        const onScroll = () => updateArrowButtonState();
+        lastScrollYRef.current = container.scrollTop;
+        const onScroll = () => {
+            updateArrowButtonState();
+            const currentY = container.scrollTop;
+            const delta = currentY - lastScrollYRef.current;
+            if (delta > 60) {
+                setMobileHeaderVisible(false);
+                lastScrollYRef.current = currentY;
+            } else if (delta < -10) {
+                setMobileHeaderVisible(true);
+                lastScrollYRef.current = currentY;
+            }
+        };
 
         container.addEventListener('scroll', onScroll, { passive: true });
         window.addEventListener('resize', onScroll);
@@ -819,7 +833,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                     <MobileTopBar
                         title={title || (t.loadingComicBook || 'Loading...')}
                         subtitle={showChapterPicker ? t.selectChapter : (currentChapterTitle || categoryLabel || author || undefined)}
-                        className="px-4"
+                        className={`px-4 transition-transform duration-300 ${mobileHeaderVisible ? 'translate-y-0' : '-translate-y-full'}`}
                         leading={(
                             <Link
                                 href="/"
@@ -836,13 +850,6 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                         <div className={`text-[10px] font-bold uppercase tracking-[0.16em] ${isDark ? 'text-white/60' : 'text-neutral-500'}`}>{t.readingTime}</div>
                                     </div>
                                 ) : null}
-                                <button
-                                    onClick={toggleTheme}
-                                    className={`mobile-touch-target flex h-11 w-11 items-center justify-center rounded-2xl border ${isDark ? 'border-white/10 bg-white/6 text-amber-300' : 'border-neutral-200 bg-white text-blue-700 shadow-sm'}`}
-                                    aria-label="Toggle Theme"
-                                >
-                                    {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                                </button>
                             </>
                         )}
                     />
@@ -877,7 +884,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                     ) : null}
                 </>
             ) : (
-                <header className={`p-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md mobile-surface-blur-soft border-b shrink-0 transition-colors duration-300 ${isDark
+                <header className={`p-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md mobile-surface-blur-soft border-b shrink-0 transition-all duration-300 ${mobileHeaderVisible ? 'translate-y-0' : '-translate-y-full'} ${isDark
                     ? 'bg-[#0a0a0a]/80 border-neutral-800/50'
                     : 'bg-white/80 border-neutral-200'
                     }`}>
@@ -994,26 +1001,26 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                                 <button
                                                     onClick={async () => {
                                                         const { updateProfile } = await import('firebase/auth');
-                                                        if (user) await updateProfile(user, { photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jack&backgroundColor=b6e3f4' });
+                                                        if (user) await updateProfile(user, { photoURL: '/avatar-male.svg' });
                                                         window.location.reload();
                                                     }}
                                                     className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${isDark ? 'border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'border-neutral-100 hover:bg-neutral-50 text-neutral-500 hover:text-neutral-900'}`}
                                                 >
-                                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-500/10 flex items-center justify-center">
-                                                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Jack&backgroundColor=b6e3f4" alt="Male" className="w-full h-full" />
+                                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-neutral-800 flex items-center justify-center">
+                                                        <img src="/avatar-male.svg" alt="Male" className="w-full h-full p-1" />
                                                     </div>
                                                     <span className="text-[9px] font-bold uppercase">{t.male}</span>
                                                 </button>
                                                 <button
                                                     onClick={async () => {
                                                         const { updateProfile } = await import('firebase/auth');
-                                                        if (user) await updateProfile(user, { photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Molly&backgroundColor=ffdfbf' });
+                                                        if (user) await updateProfile(user, { photoURL: '/avatar-female.svg' });
                                                         window.location.reload();
                                                     }}
                                                     className={`flex-1 flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${isDark ? 'border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'border-neutral-100 hover:bg-neutral-50 text-neutral-500 hover:text-neutral-900'}`}
                                                 >
-                                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-pink-500/10 flex items-center justify-center">
-                                                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Molly&backgroundColor=ffdfbf" alt="Female" className="w-full h-full" />
+                                                    <div className="w-8 h-8 rounded-full overflow-hidden bg-neutral-800 flex items-center justify-center">
+                                                        <img src="/avatar-female.svg" alt="Female" className="w-full h-full p-1" />
                                                     </div>
                                                     <span className="text-[9px] font-bold uppercase">{t.female}</span>
                                                 </button>
@@ -1043,14 +1050,6 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                         </div>
                     </div>
                 )}
-
-                <button
-                    onClick={toggleTheme}
-                    className={`ml-2 p-2 rounded-full transition-colors ${isDark ? 'hover:bg-neutral-800 text-amber-400' : 'hover:bg-neutral-100 text-blue-600'}`}
-                    aria-label="Toggle Theme"
-                >
-                    {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </button>
                 </header>
             )}
 
@@ -1183,7 +1182,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                         )}
 
                                         {isChapterlessBook && (
-                                            <div className={`absolute -left-3 top-4 z-30 transition-all duration-300 ${isCheckedPage
+                                            <div className={`absolute left-1 md:-left-3 top-4 z-30 transition-all duration-300 ${isCheckedPage
                                                 ? 'opacity-100 translate-x-0 pointer-events-auto'
                                                 : isActiveBlock
                                                     ? 'opacity-55 translate-x-0 pointer-events-auto'
@@ -1231,7 +1230,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                         )}
                                         {(block.croppedImageUrl || block.imageUrl) && (
                                             <div className={`${isMobileOptimized ? 'px-2 pb-2' : 'px-4 pb-4'} ${block.text ? 'pt-0' : 'pt-4'}`}>
-                                                <div className={`relative w-full overflow-hidden ${isMobileOptimized ? 'rounded-[1rem]' : 'rounded-xl shadow-sm'}`}>
+                                                <div className={`relative w-full overflow-hidden ${isMobileOptimized ? 'rounded-[1rem]' : 'rounded-xl shadow-sm'}`} style={{ containerType: 'inline-size' }}>
                                                     <img
                                                         src={block.croppedImageUrl || block.imageUrl}
                                                         alt={`Panel ${index + 1}`}
@@ -1288,7 +1287,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                                                 zIndex: 10,
                                                             }}
                                                         >
-                                                            <div className="relative" style={{ width: 90 * bubble.scale, height: 90 * bubble.scale }}>
+                                                            <div className="relative" style={{ width: `${(90 * bubble.scale / 640) * 100}%`, aspectRatio: '1 / 1' }}>
                                                                 <img
                                                                     src={`/bubbles/${bubble.bubbleType}.png`}
                                                                     alt=""
@@ -1298,8 +1297,8 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                                                                     className="font-bubble absolute inset-0 flex items-center justify-center text-center text-black font-bold"
                                                                     style={{
                                                                         fontFamily: 'BPGNinoTall',
-                                                                        fontSize: Math.max(7, 90 * bubble.scale * 0.13),
-                                                                        padding: `${90 * bubble.scale * 0.2}px ${90 * bubble.scale * 0.15}px`,
+                                                                        fontSize: `clamp(6px, ${(90 * bubble.scale * 0.13 / 640) * 100}cqi, ${90 * bubble.scale * 0.13}px)`,
+                                                                        padding: '20% 15%',
                                                                         lineHeight: 1.2,
                                                                         wordBreak: 'break-word',
                                                                     }}
