@@ -109,48 +109,6 @@ function sanitizeComicListItem(id: string, data: Record<string, unknown>): Comic
   };
 }
 
-function getUpdatedAtMillis(value: unknown): number {
-  if (!value) return 0;
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (value instanceof Date) return value.getTime();
-  if (
-    typeof value === 'object' &&
-    value !== null &&
-    'toMillis' in value &&
-    typeof (value as { toMillis: unknown }).toMillis === 'function'
-  ) {
-    const millis = (value as { toMillis: () => number }).toMillis();
-    return Number.isFinite(millis) ? millis : 0;
-  }
-  return 0;
-}
-
-function sanitizeComicListItem(id: string, data: Record<string, unknown>): ComicData {
-  const blocks = Array.isArray(data.blocks) ? data.blocks : [];
-  const coverUrl = typeof data.coverUrl === 'string' ? data.coverUrl : '';
-  const firstBlock = blocks[0] && typeof blocks[0] === 'object' ? blocks[0] as Record<string, unknown> : null;
-  const firstPageUrl = coverUrl ||
-    (firstBlock && typeof firstBlock.croppedImageUrl === 'string' ? firstBlock.croppedImageUrl : '') ||
-    (firstBlock && typeof firstBlock.imageUrl === 'string' ? firstBlock.imageUrl : '') ||
-    null;
-
-  return {
-    id,
-    title: typeof data.title === 'string' ? data.title : '',
-    author: typeof data.author === 'string' ? data.author : '',
-    category: typeof data.category === 'string' ? data.category : '',
-    isPublished: data.isPublished === true,
-    isSchoolMaterial: data.isSchoolMaterial === true,
-    grade: typeof data.grade === 'number' ? data.grade : null,
-    coverUrl: coverUrl || undefined,
-    firstPageUrl,
-    updatedAt: getUpdatedAtMillis(data.updatedAt),
-    views: typeof data.views === 'number' ? data.views : 0,
-    description: typeof data.description === 'string' ? data.description : '',
-    blocks,
-  };
-}
-
 const MAX_HOTSPOTS_PER_BLOCK = 20;
 const MIN_HOTSPOT_RADIUS = 2;
 const MAX_HOTSPOT_RADIUS = 18;
