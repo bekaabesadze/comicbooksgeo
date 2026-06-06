@@ -13,6 +13,7 @@ import BubbleEditor from './BubbleEditor';
 import CharacterHotspotEditor from './CharacterHotspotEditor';
 import CharacterManagement from './CharacterManagement';
 import CoverTextEditor from './CoverTextEditor';
+import CoverTextOverlayLayers from './CoverTextOverlayLayers';
 
 type ChapterItem = {
     id: string;
@@ -554,40 +555,7 @@ function ComicSettings() {
                                     <>
                                          <img src={coverUrl} alt="Cover" className="w-full h-full object-cover opacity-80 group-hover/card:opacity-100 transition-all duration-700 ease-out" />
 
-                                        {/* Cover text overlays preview */}
-                                        {coverTextOverlays.map(overlay => (
-                                            <div
-                                                key={overlay.id}
-                                                className="absolute pointer-events-none"
-                                                style={{
-                                                    left: `${overlay.x}%`,
-                                                    top: `${overlay.y}%`,
-                                                    transform: `translate(-50%, -50%) rotate(${overlay.rotation}deg)`,
-                                                    zIndex: 15,
-                                                }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        fontFamily: overlay.fontFamily,
-                                                        fontSize: Math.max(6, overlay.fontSize * 0.2),
-                                                        fontWeight: overlay.fontWeight,
-                                                        fontStyle: overlay.fontStyle,
-                                                        color: overlay.color,
-                                                        textTransform: overlay.textTransform,
-                                                        letterSpacing: overlay.letterSpacing * 0.2,
-                                                        lineHeight: overlay.lineHeight,
-                                                        opacity: overlay.opacity,
-                                                        textShadow: overlay.shadowEnabled
-                                                            ? `${overlay.shadowOffsetX * 0.2}px ${overlay.shadowOffsetY * 0.2}px ${overlay.shadowBlur * 0.2}px ${overlay.shadowColor}`
-                                                            : 'none',
-                                                        whiteSpace: 'pre',
-                                                        display: 'block',
-                                                    }}
-                                                >
-                                                    {overlay.text}
-                                                </span>
-                                            </div>
-                                        ))}
+                                        <CoverTextOverlayLayers overlays={coverTextOverlays} scale={0.2} />
 
                                         {/* Watermark on Cover in Editor Settings */}
                                         <img

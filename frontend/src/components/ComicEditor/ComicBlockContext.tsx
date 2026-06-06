@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import type { CoverGradientPreset, TextTexturePreset } from '@/lib/coverTextStyles';
 
 /* ─── Data Model ─── */
 
@@ -44,8 +45,16 @@ export interface CoverTextOverlay {
     letterSpacing: number; // px
     lineHeight: number;    // unitless multiplier
     textAlign: 'left' | 'center' | 'right';
+    textBoxWidth: number;  // px
     rotation: number;      // degrees
     opacity: number;       // 0-1
+    texturePreset: TextTexturePreset;
+    strokeEnabled: boolean;
+    strokeColor: string;
+    strokeWidth: number;
+    coverGradientEnabled: boolean;
+    coverGradientPreset: CoverGradientPreset;
+    coverGradientOpacity: number;
     // Text shadow
     shadowEnabled: boolean;
     shadowColor: string;
@@ -157,8 +166,16 @@ const DEFAULT_COVER_TEXT: Omit<CoverTextOverlay, 'id'> = {
     letterSpacing: 0,
     lineHeight: 1.2,
     textAlign: 'center',
+    textBoxWidth: 340,
     rotation: 0,
     opacity: 1,
+    texturePreset: 'solid',
+    strokeEnabled: false,
+    strokeColor: '#111827',
+    strokeWidth: 2,
+    coverGradientEnabled: false,
+    coverGradientPreset: 'bottomNoir',
+    coverGradientOpacity: 0.78,
     shadowEnabled: true,
     shadowColor: 'rgba(0,0,0,0.7)',
     shadowBlur: 8,

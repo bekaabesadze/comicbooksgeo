@@ -14,6 +14,7 @@ import { Trophy, Star, Award, GraduationCap, ChevronRight, BarChart3, Settings }
 import PwaInstallPrompt from '@/components/pwa/PwaInstallPrompt';
 import MobileScreenShell from '@/components/mobile/MobileScreenShell';
 import MobileTopBar from '@/components/mobile/MobileTopBar';
+import CoverTextOverlayLayers from '@/components/ComicEditor/CoverTextOverlayLayers';
 
 interface BubbleOverlay {
   id: string;
@@ -1805,39 +1806,7 @@ export default function Home() {
                               className="h-full w-full object-cover"
                               loading="lazy"
                             />
-                            {comic.coverTextOverlays?.map((overlay: any) => (
-                              <div
-                                key={overlay.id}
-                                className="pointer-events-none absolute"
-                                style={{
-                                  left: `${overlay.x}%`,
-                                  top: `${overlay.y}%`,
-                                  transform: `translate(-50%, -50%) rotate(${overlay.rotation || 0}deg)`,
-                                  zIndex: 15,
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontFamily: overlay.fontFamily,
-                                    fontSize: Math.max(6, (overlay.fontSize || 48) * 0.24),
-                                    fontWeight: overlay.fontWeight,
-                                    fontStyle: overlay.fontStyle,
-                                    color: overlay.color,
-                                    textTransform: overlay.textTransform,
-                                    letterSpacing: (overlay.letterSpacing || 0) * 0.24,
-                                    lineHeight: overlay.lineHeight,
-                                    opacity: overlay.opacity ?? 1,
-                                    textShadow: overlay.shadowEnabled
-                                      ? `${(overlay.shadowOffsetX || 2) * 0.24}px ${(overlay.shadowOffsetY || 4) * 0.24}px ${(overlay.shadowBlur || 8) * 0.24}px ${overlay.shadowColor || 'rgba(0,0,0,0.7)'}`
-                                      : 'none',
-                                    whiteSpace: 'pre',
-                                    display: 'block',
-                                  }}
-                                >
-                                  {overlay.text}
-                                </span>
-                              </div>
-                            ))}
+                            <CoverTextOverlayLayers overlays={comic.coverTextOverlays} scale={0.24} />
                           </>
                         ) : (
                           <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-900 to-slate-950 text-2xl font-black uppercase tracking-[0.22em] text-blue-200">
@@ -2421,40 +2390,7 @@ export default function Home() {
                             loading="lazy"
                           />
 
-                          {/* Cover text overlays */}
-                          {comic.coverTextOverlays?.map((overlay: any) => (
-                              <div
-                                  key={overlay.id}
-                                  className="absolute pointer-events-none"
-                                  style={{
-                                      left: `${overlay.x}%`,
-                                      top: `${overlay.y}%`,
-                                      transform: `translate(-50%, -50%) rotate(${overlay.rotation || 0}deg)`,
-                                      zIndex: 15,
-                                  }}
-                              >
-                                  <span
-                                      style={{
-                                          fontFamily: overlay.fontFamily,
-                                          fontSize: Math.max(6, (overlay.fontSize || 48) * 0.25),
-                                          fontWeight: overlay.fontWeight,
-                                          fontStyle: overlay.fontStyle,
-                                          color: overlay.color,
-                                          textTransform: overlay.textTransform,
-                                          letterSpacing: (overlay.letterSpacing || 0) * 0.25,
-                                          lineHeight: overlay.lineHeight,
-                                          opacity: overlay.opacity ?? 1,
-                                          textShadow: overlay.shadowEnabled
-                                              ? `${(overlay.shadowOffsetX || 2) * 0.25}px ${(overlay.shadowOffsetY || 4) * 0.25}px ${(overlay.shadowBlur || 8) * 0.25}px ${overlay.shadowColor || 'rgba(0,0,0,0.7)'}`
-                                              : 'none',
-                                          whiteSpace: 'pre',
-                                          display: 'block',
-                                      }}
-                                  >
-                                      {overlay.text}
-                                  </span>
-                              </div>
-                          ))}
+                          <CoverTextOverlayLayers overlays={comic.coverTextOverlays} scale={0.25} />
 
                           {/* Watermark on Cover */}
                           <img
