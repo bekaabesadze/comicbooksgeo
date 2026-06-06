@@ -1,9 +1,19 @@
 'use client';
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { X, Plus, Trash2, Type, Bold, Italic, AlignLeft, AlignCenter, AlignRight, RotateCw, Eye } from 'lucide-react';
+import { X, Plus, Trash2, Type, Bold, Italic, AlignLeft, AlignCenter, AlignRight, Palette, Sparkles, Layers, Shield, PanelRight } from 'lucide-react';
 import { useComicBlocks, CoverTextOverlay } from './ComicBlockContext';
 import { useLanguage } from '@/context/LanguageContext';
+import {
+    COVER_GRADIENT_PRESETS,
+    TEXT_TEXTURE_PRESETS,
+    getCoverGradientStyle,
+    getCoverTextBackgroundStyle,
+    getCoverTextSpanStyle,
+    getCoverTextWrapperStyle,
+    type CoverGradientPreset,
+    type TextTexturePreset,
+} from '@/lib/coverTextStyles';
 
 const FONT_OPTIONS = [
     { value: 'BPGNinoTall', label: 'BPG Nino Tall' },
@@ -16,6 +26,133 @@ const FONT_OPTIONS = [
     { value: 'Courier New, monospace', label: 'Courier New' },
 ];
 
+function ControlSection({
+    title,
+    icon: Icon,
+    children,
+    description,
+}: {
+    title: string;
+    icon: React.ComponentType<{ className?: string }>;
+    children: React.ReactNode;
+    description?: string;
+}) {
+    return (
+        <section className="rounded-2xl border border-white/[0.07] bg-white/[0.035] p-4 shadow-lg shadow-black/20">
+            <div className="mb-3 flex items-start gap-2.5">
+                <div className="rounded-xl border border-blue-400/20 bg-blue-500/10 p-2 text-blue-300">
+                    <Icon className="h-4 w-4" />
+                </div>
+                <div>
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white/80">{title}</h3>
+                    {description && <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">{description}</p>}
+                </div>
+            </div>
+            <div className="space-y-3">{children}</div>
+        </section>
+    );
+}
+
+function Toggle({
+    checked,
+    onChange,
+    label,
+}: {
+    checked: boolean;
+    onChange: () => void;
+    label: string;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onChange}
+            className="flex w-full items-center justify-between rounded-xl border border-white/[0.07] bg-neutral-950/80 px-3 py-2 text-left transition-colors hover:border-blue-400/30"
+        >
+            <span className="text-xs font-bold text-neutral-300">{label}</span>
+            <span className={`relative h-5 w-9 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-neutral-700'}`}>
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+            </span>
+        </button>
+    );
+}
+
+function RangeControl({
+    label,
+    value,
+    min,
+    max,
+    step,
+    suffix = '',
+    onChange,
+}: {
+    label: string;
+    value: number;
+    min: number;
+    max: number;
+    step?: number;
+    suffix?: string;
+    onChange: (value: number) => void;
+}) {
+    return (
+        <label className="block">
+            <span className="mb-1.5 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-neutral-500">
+                <span>{label}</span>
+                <span className="text-neutral-300">{Number.isInteger(value) ? value : value.toFixed(2)}{suffix}</span>
+            </span>
+            <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={(e) => onChange(Number(e.target.value))}
+                className="w-full accent-blue-500"
+            />
+        </label>
+    );
+}
+
+function ColorField({
+    label,
+    value,
+    fallback,
+    onChange,
+}: {
+    label: string;
+    value: string;
+    fallback: string;
+    onChange: (value: string) => void;
+}) {
+    return (
+        <label className="block">
+            <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-neutral-500">{label}</span>
+            <div className="flex items-center gap-2">
+                <input
+                    type="color"
+                    value={value.startsWith('#') ? value : fallback}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="h-9 w-10 cursor-pointer rounded-lg border border-neutral-700 bg-transparent"
+                />
+                <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="min-w-0 flex-1 rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-2 text-xs text-white focus:border-blue-500/50 focus:outline-none"
+                />
+            </div>
+        </label>
+    );
+}
+
+type EditorTab = 'content' | 'typography' | 'style' | 'effects';
+
+const EDITOR_TABS: Array<{ id: EditorTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+    { id: 'content', label: 'Content', icon: Layers },
+    { id: 'typography', label: 'Type', icon: PanelRight },
+    { id: 'style', label: 'Style', icon: Palette },
+    { id: 'effects', label: 'Effects', icon: Sparkles },
+];
+
 interface CoverTextEditorProps {
     imageUrl: string;
     onClose: () => void;
@@ -25,6 +162,7 @@ export default function CoverTextEditor({ imageUrl, onClose }: CoverTextEditorPr
     const { t } = useLanguage();
     const { coverTextOverlays, addCoverText, updateCoverText, removeCoverText } = useComicBlocks();
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<EditorTab>('content');
     const canvasRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
 
@@ -146,25 +284,33 @@ export default function CoverTextEditor({ imageUrl, onClose }: CoverTextEditorPr
 
             <div className="flex flex-1 min-h-0 overflow-hidden">
                 {/* Canvas Area */}
-                <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
-                    <div ref={canvasRef} className="relative inline-block max-w-full max-h-full shadow-2xl rounded-lg overflow-hidden" onClick={() => setSelectedId(null)}>
+                <div className="flex-1 flex items-center justify-center p-4 overflow-auto bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.12),transparent_45%),#05070b]">
+                    <div ref={canvasRef} className="relative inline-block max-w-full max-h-full overflow-hidden rounded-xl shadow-2xl ring-1 ring-white/10" onClick={() => setSelectedId(null)}>
                         <img src={imageUrl} alt="Cover" className="max-w-full max-h-[calc(100vh-120px)] object-contain select-none pointer-events-none" draggable={false} />
+
+                        {/* Cover gradient washes */}
+                        {coverTextOverlays.map((overlay) => {
+                            const gradientStyle = getCoverGradientStyle(overlay);
+                            if (!gradientStyle) return null;
+                            return (
+                                <div
+                                    key={`${overlay.id}-cover-gradient`}
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{ ...gradientStyle, zIndex: 5 }}
+                                />
+                            );
+                        })}
 
                         {/* Text Overlays */}
                         {coverTextOverlays.map(overlay => {
                             const isSelected = overlay.id === selectedId;
-                            const shadowStyle = overlay.shadowEnabled
-                                ? `${overlay.shadowOffsetX}px ${overlay.shadowOffsetY}px ${overlay.shadowBlur}px ${overlay.shadowColor}`
-                                : 'none';
 
                             return (
                                 <div
                                     key={overlay.id}
                                     className={`absolute cursor-move select-none ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1 ring-offset-transparent' : 'hover:ring-1 hover:ring-white/30'}`}
                                     style={{
-                                        left: `${overlay.x}%`,
-                                        top: `${overlay.y}%`,
-                                        transform: `translate(-50%, -50%) rotate(${overlay.rotation}deg)`,
+                                        ...getCoverTextWrapperStyle(overlay),
                                         zIndex: isSelected ? 50 : 10,
                                     }}
                                     onMouseDown={(e) => handleMouseDown(e, overlay)}
@@ -173,32 +319,11 @@ export default function CoverTextEditor({ imageUrl, onClose }: CoverTextEditorPr
                                 >
                                     {overlay.bgEnabled && (
                                         <div
-                                            className="absolute inset-0 pointer-events-none"
-                                            style={{
-                                                background: overlay.bgColor,
-                                                borderRadius: overlay.bgBorderRadius,
-                                                margin: `-${overlay.bgPaddingY}px -${overlay.bgPaddingX}px`,
-                                                padding: `${overlay.bgPaddingY}px ${overlay.bgPaddingX}px`,
-                                            }}
+                                            style={getCoverTextBackgroundStyle(overlay) || undefined}
                                         />
                                     )}
                                     <span
-                                        style={{
-                                            fontFamily: overlay.fontFamily,
-                                            fontSize: overlay.fontSize,
-                                            fontWeight: overlay.fontWeight,
-                                            fontStyle: overlay.fontStyle,
-                                            color: overlay.color,
-                                            textTransform: overlay.textTransform,
-                                            letterSpacing: overlay.letterSpacing,
-                                            lineHeight: overlay.lineHeight,
-                                            textAlign: overlay.textAlign,
-                                            opacity: overlay.opacity,
-                                            textShadow: shadowStyle,
-                                            whiteSpace: 'pre',
-                                            display: 'block',
-                                            position: 'relative',
-                                        }}
+                                        style={getCoverTextSpanStyle(overlay)}
                                     >
                                         {overlay.text || (isSelected ? '…' : '')}
                                     </span>
@@ -209,234 +334,228 @@ export default function CoverTextEditor({ imageUrl, onClose }: CoverTextEditorPr
                 </div>
 
                 {/* Control Panel */}
-                <div className="w-80 bg-neutral-900 border-l border-neutral-800 overflow-y-auto shrink-0 custom-scrollbar">
+                <div className="w-[390px] bg-neutral-900 border-l border-neutral-800 flex flex-col shrink-0">
                     {selectedOverlay ? (
-                        <div className="p-4 space-y-4">
-                            {/* Layer List */}
-                            <div>
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Layers</label>
-                                <div className="space-y-1">
+                        <>
+                            <div className="grid grid-cols-4 gap-1 border-b border-neutral-800 bg-neutral-950/80 p-2 shrink-0">
+                                {EDITOR_TABS.map(({ id, label, icon: Icon }) => (
+                                    <button
+                                        key={id}
+                                        type="button"
+                                        onClick={() => setActiveTab(id)}
+                                        className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[10px] font-black uppercase tracking-wider transition-colors ${activeTab === id ? 'bg-blue-500/15 text-blue-200 border border-blue-500/30' : 'text-neutral-500 hover:bg-neutral-800 hover:text-neutral-200 border border-transparent'}`}
+                                    >
+                                        <Icon className="h-3.5 w-3.5" />
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                            {activeTab === 'content' && (
+                            <ControlSection title="Layers & Content" icon={Layers} description="Pick a layer, edit copy, then drag it directly on the cover.">
+                                <div className="grid gap-1.5">
                                     {coverTextOverlays.map((o, i) => (
                                         <div
                                             key={o.id}
-                                            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-xs transition-colors ${o.id === selectedId ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 border border-transparent'}`}
+                                            role="button"
+                                            tabIndex={0}
+                                            className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors ${o.id === selectedId ? 'border-blue-500/40 bg-blue-500/15 text-blue-200' : 'border-transparent text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'}`}
                                             onClick={() => setSelectedId(o.id)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    setSelectedId(o.id);
+                                                }
+                                            }}
                                         >
-                                            <Type className="w-3 h-3 shrink-0" />
-                                            <span className="truncate flex-1 font-medium">{o.text || `Text ${i + 1}`}</span>
+                                            <Type className="h-3.5 w-3.5 shrink-0" />
+                                            <span className="min-w-0 flex-1 truncate font-semibold">{o.text || `Text ${i + 1}`}</span>
                                             <button
+                                                type="button"
                                                 onClick={(e) => { e.stopPropagation(); handleDelete(o.id); }}
-                                                className="p-0.5 hover:text-red-400 transition-colors shrink-0"
+                                                className="rounded-md p-1 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-300"
+                                                aria-label="Delete text layer"
                                             >
-                                                <Trash2 className="w-3 h-3" />
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </button>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                                <label className="block">
+                                    <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-neutral-500">{(t as any).text || 'Text'}</span>
+                                    <textarea
+                                        value={selectedOverlay.text}
+                                        onChange={(e) => update({ text: e.target.value })}
+                                        placeholder="Enter text..."
+                                        className="min-h-[92px] w-full resize-y rounded-xl border border-neutral-800 bg-neutral-950 p-3 text-sm text-white focus:border-blue-500/50 focus:outline-none"
+                                        style={{ fontFamily: selectedOverlay.fontFamily }}
+                                    />
+                                </label>
+                            </ControlSection>
+                            )}
 
-                            <div className="border-t border-neutral-800 pt-4">
-                                {/* Text Input */}
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">{(t as any).text || 'Text'}</label>
-                                <textarea
-                                    value={selectedOverlay.text}
-                                    onChange={(e) => update({ text: e.target.value })}
-                                    placeholder="Enter text…"
-                                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-blue-500/50 resize-y min-h-[60px]"
-                                    style={{ fontFamily: selectedOverlay.fontFamily }}
-                                />
-                            </div>
-
-                            {/* Font Family */}
-                            <div>
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">{(t as any).fontFamily || 'Font'}</label>
-                                <select
-                                    value={selectedOverlay.fontFamily}
-                                    onChange={(e) => update({ fontFamily: e.target.value })}
-                                    className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-blue-500/50"
-                                >
-                                    {FONT_OPTIONS.map(f => (
-                                        <option key={f.value} value={f.value}>{f.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Font Size */}
-                            <div>
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">{(t as any).fontSize || 'Size'} — {selectedOverlay.fontSize}px</label>
-                                <input type="range" min={8} max={200} value={selectedOverlay.fontSize} onChange={(e) => update({ fontSize: Number(e.target.value) })} className="w-full accent-blue-500" />
-                            </div>
-
-                            {/* Color */}
-                            <div>
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">Color</label>
-                                <div className="flex items-center gap-2">
-                                    <input type="color" value={selectedOverlay.color.startsWith('#') ? selectedOverlay.color : '#ffffff'} onChange={(e) => update({ color: e.target.value })} className="w-8 h-8 rounded border border-neutral-700 cursor-pointer bg-transparent" />
-                                    <input type="text" value={selectedOverlay.color} onChange={(e) => update({ color: e.target.value })} className="flex-1 bg-neutral-950 border border-neutral-800 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-blue-500/50" />
-                                </div>
-                            </div>
-
-                            {/* Font Weight & Style */}
-                            <div className="flex gap-3">
-                                <div className="flex-1">
-                                    <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">{(t as any).fontWeight || 'Weight'} — {selectedOverlay.fontWeight}</label>
-                                    <input type="range" min={100} max={900} step={100} value={selectedOverlay.fontWeight} onChange={(e) => update({ fontWeight: Number(e.target.value) })} className="w-full accent-blue-500" />
-                                </div>
-                                <div className="shrink-0 flex flex-col items-center gap-1">
-                                    <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1">Style</label>
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={() => update({ fontWeight: selectedOverlay.fontWeight >= 700 ? 400 : 700 })}
-                                            className={`p-1.5 rounded ${selectedOverlay.fontWeight >= 700 ? 'bg-blue-500/20 text-blue-400' : 'text-neutral-500 hover:text-neutral-300'}`}
-                                        >
-                                            <Bold className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                            onClick={() => update({ fontStyle: selectedOverlay.fontStyle === 'italic' ? 'normal' : 'italic' })}
-                                            className={`p-1.5 rounded ${selectedOverlay.fontStyle === 'italic' ? 'bg-blue-500/20 text-blue-400' : 'text-neutral-500 hover:text-neutral-300'}`}
-                                        >
-                                            <Italic className="w-3.5 h-3.5" />
-                                        </button>
+                            {activeTab === 'typography' && (
+                            <ControlSection title="Typography" icon={PanelRight} description="Size, wrapping, italic style, alignment, and spacing live together.">
+                                <label className="block">
+                                    <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-neutral-500">{(t as any).fontFamily || 'Font'}</span>
+                                    <select
+                                        value={selectedOverlay.fontFamily}
+                                        onChange={(e) => update({ fontFamily: e.target.value })}
+                                        className="w-full rounded-xl border border-neutral-800 bg-neutral-950 p-2.5 text-sm text-white focus:border-blue-500/50 focus:outline-none"
+                                    >
+                                        {FONT_OPTIONS.map(f => (
+                                            <option key={f.value} value={f.value}>{f.label}</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <RangeControl label={(t as any).fontSize || 'Size'} value={selectedOverlay.fontSize ?? 48} min={8} max={220} suffix="px" onChange={(value) => update({ fontSize: value })} />
+                                <RangeControl label="Text width" value={selectedOverlay.textBoxWidth ?? 340} min={80} max={760} step={10} suffix="px" onChange={(value) => update({ textBoxWidth: value })} />
+                                <RangeControl label={(t as any).fontWeight || 'Weight'} value={selectedOverlay.fontWeight ?? 700} min={100} max={900} step={100} onChange={(value) => update({ fontWeight: value })} />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-neutral-500">Style</span>
+                                        <div className="flex gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => update({ fontWeight: (selectedOverlay.fontWeight ?? 700) >= 700 ? 400 : 700 })}
+                                                className={`rounded-lg border px-3 py-2 ${selectedOverlay.fontWeight >= 700 ? 'border-blue-500/40 bg-blue-500/20 text-blue-300' : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'}`}
+                                                aria-label="Toggle bold"
+                                            >
+                                                <Bold className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => update({ fontStyle: selectedOverlay.fontStyle === 'italic' ? 'normal' : 'italic' })}
+                                                className={`rounded-lg border px-3 py-2 ${selectedOverlay.fontStyle === 'italic' ? 'border-blue-500/40 bg-blue-500/20 text-blue-300' : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'}`}
+                                                aria-label="Toggle italic"
+                                            >
+                                                <Italic className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-neutral-500">Align</span>
+                                        <div className="flex gap-1.5">
+                                            {[{ v: 'left' as const, I: AlignLeft }, { v: 'center' as const, I: AlignCenter }, { v: 'right' as const, I: AlignRight }].map(({ v, I }) => (
+                                                <button
+                                                    type="button"
+                                                    key={v}
+                                                    onClick={() => update({ textAlign: v })}
+                                                    className={`rounded-lg border px-3 py-2 ${selectedOverlay.textAlign === v ? 'border-blue-500/40 bg-blue-500/20 text-blue-300' : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'}`}
+                                                    aria-label={`Align ${v}`}
+                                                >
+                                                    <I className="h-4 w-4" />
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* Text Align */}
-                            <div>
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">Align</label>
-                                <div className="flex gap-1">
-                                    {[{ v: 'left' as const, I: AlignLeft }, { v: 'center' as const, I: AlignCenter }, { v: 'right' as const, I: AlignRight }].map(({ v, I }) => (
-                                        <button
-                                            key={v}
-                                            onClick={() => update({ textAlign: v })}
-                                            className={`p-1.5 rounded ${selectedOverlay.textAlign === v ? 'bg-blue-500/20 text-blue-400' : 'text-neutral-500 hover:text-neutral-300'}`}
-                                        >
-                                            <I className="w-3.5 h-3.5" />
-                                        </button>
-                                    ))}
+                                <div>
+                                    <span className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-neutral-500">Transform</span>
+                                    <div className="flex gap-1.5">
+                                        {(['none', 'uppercase', 'lowercase'] as const).map(v => (
+                                            <button
+                                                type="button"
+                                                key={v}
+                                                onClick={() => update({ textTransform: v })}
+                                                className={`rounded-lg border px-3 py-1.5 text-[10px] font-black uppercase tracking-wider ${selectedOverlay.textTransform === v ? 'border-blue-500/40 bg-blue-500/20 text-blue-300' : 'border-neutral-800 text-neutral-500 hover:text-neutral-300'}`}
+                                            >
+                                                {v === 'none' ? 'Aa' : v === 'uppercase' ? 'AA' : 'aa'}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                                <RangeControl label={(t as any).letterSpacing || 'Spacing'} value={selectedOverlay.letterSpacing ?? 0} min={-5} max={35} step={0.5} suffix="px" onChange={(value) => update({ letterSpacing: value })} />
+                                <RangeControl label="Line height" value={selectedOverlay.lineHeight ?? 1.2} min={0.6} max={3} step={0.05} onChange={(value) => update({ lineHeight: value })} />
+                                <RangeControl label="Rotation" value={selectedOverlay.rotation ?? 0} min={-180} max={180} suffix="°" onChange={(value) => update({ rotation: value })} />
+                                <RangeControl label={(t as any).textOpacity || 'Opacity'} value={selectedOverlay.opacity ?? 1} min={0} max={1} step={0.05} onChange={(value) => update({ opacity: value })} />
+                            </ControlSection>
+                            )}
 
-                            {/* Text Transform */}
-                            <div>
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">Transform</label>
-                                <div className="flex gap-1">
-                                    {(['none', 'uppercase', 'lowercase'] as const).map(v => (
-                                        <button
-                                            key={v}
-                                            onClick={() => update({ textTransform: v })}
-                                            className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${selectedOverlay.textTransform === v ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-neutral-500 border border-neutral-800 hover:text-neutral-300'}`}
-                                        >
-                                            {v === 'none' ? 'Aa' : v === 'uppercase' ? 'AA' : 'aa'}
-                                        </button>
-                                    ))}
+                            {activeTab === 'style' && (
+                            <>
+                            <ControlSection title="Color & Texture" icon={Palette} description="Use a solid color or clip one of the built-in premium textures into the text.">
+                                <ColorField label="Base color" value={selectedOverlay.color || '#ffffff'} fallback="#ffffff" onChange={(value) => update({ color: value })} />
+                                <div>
+                                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-neutral-500">Texture preset</span>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {TEXT_TEXTURE_PRESETS.map((preset) => (
+                                            <button
+                                                type="button"
+                                                key={preset.value}
+                                                onClick={() => update({ texturePreset: preset.value as TextTexturePreset })}
+                                                className={`overflow-hidden rounded-xl border p-2 text-left transition-all ${selectedOverlay.texturePreset === preset.value ? 'border-blue-400/60 bg-blue-500/15 text-blue-100' : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200'}`}
+                                            >
+                                                <span
+                                                    className="mb-1 block h-7 rounded-lg border border-white/10"
+                                                    style={{ background: preset.background || selectedOverlay.color || '#ffffff', backgroundSize: preset.backgroundSize || '160% 160%' }}
+                                                />
+                                                <span className="block truncate text-[10px] font-black uppercase tracking-wider">{preset.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            </ControlSection>
 
-                            {/* Letter Spacing */}
-                            <div>
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">{(t as any).letterSpacing || 'Spacing'} — {selectedOverlay.letterSpacing}px</label>
-                                <input type="range" min={-5} max={30} step={0.5} value={selectedOverlay.letterSpacing} onChange={(e) => update({ letterSpacing: Number(e.target.value) })} className="w-full accent-blue-500" />
-                            </div>
-
-                            {/* Line Height */}
-                            <div>
-                                <label className="block text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">Line Height — {selectedOverlay.lineHeight.toFixed(1)}</label>
-                                <input type="range" min={0.5} max={3} step={0.1} value={selectedOverlay.lineHeight} onChange={(e) => update({ lineHeight: Number(e.target.value) })} className="w-full accent-blue-500" />
-                            </div>
-
-                            {/* Rotation */}
-                            <div>
-                                <label className="flex items-center gap-1 text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">
-                                    <RotateCw className="w-3 h-3" /> Rotation — {selectedOverlay.rotation}°
-                                </label>
-                                <input type="range" min={-180} max={180} value={selectedOverlay.rotation} onChange={(e) => update({ rotation: Number(e.target.value) })} className="w-full accent-blue-500" />
-                            </div>
-
-                            {/* Opacity */}
-                            <div>
-                                <label className="flex items-center gap-1 text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-1.5">
-                                    <Eye className="w-3 h-3" /> {(t as any).textOpacity || 'Opacity'} — {Math.round(selectedOverlay.opacity * 100)}%
-                                </label>
-                                <input type="range" min={0} max={1} step={0.05} value={selectedOverlay.opacity} onChange={(e) => update({ opacity: Number(e.target.value) })} className="w-full accent-blue-500" />
-                            </div>
-
-                            {/* Shadow Section */}
-                            <div className="border-t border-neutral-800 pt-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{(t as any).textShadow || 'Shadow'}</label>
-                                    <button
-                                        onClick={() => update({ shadowEnabled: !selectedOverlay.shadowEnabled })}
-                                        className={`w-9 h-5 rounded-full transition-colors relative ${selectedOverlay.shadowEnabled ? 'bg-blue-600' : 'bg-neutral-700'}`}
-                                    >
-                                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow ${selectedOverlay.shadowEnabled ? 'left-[18px]' : 'left-0.5'}`} />
-                                    </button>
-                                </div>
-                                {selectedOverlay.shadowEnabled && (
-                                    <div className="space-y-3 pl-1">
-                                        <div>
-                                            <label className="block text-[10px] text-neutral-600 mb-1">Color</label>
-                                            <div className="flex items-center gap-2">
-                                                <input type="color" value={selectedOverlay.shadowColor.startsWith('#') ? selectedOverlay.shadowColor : '#000000'} onChange={(e) => update({ shadowColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer bg-transparent border border-neutral-700" />
-                                                <input type="text" value={selectedOverlay.shadowColor} onChange={(e) => update({ shadowColor: e.target.value })} className="flex-1 bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-white text-[10px] focus:outline-none" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] text-neutral-600 mb-1">Blur — {selectedOverlay.shadowBlur}px</label>
-                                            <input type="range" min={0} max={50} value={selectedOverlay.shadowBlur} onChange={(e) => update({ shadowBlur: Number(e.target.value) })} className="w-full accent-blue-500" />
-                                        </div>
-                                        <div className="flex gap-3">
-                                            <div className="flex-1">
-                                                <label className="block text-[10px] text-neutral-600 mb-1">Offset X — {selectedOverlay.shadowOffsetX}px</label>
-                                                <input type="range" min={-30} max={30} value={selectedOverlay.shadowOffsetX} onChange={(e) => update({ shadowOffsetX: Number(e.target.value) })} className="w-full accent-blue-500" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <label className="block text-[10px] text-neutral-600 mb-1">Offset Y — {selectedOverlay.shadowOffsetY}px</label>
-                                                <input type="range" min={-30} max={30} value={selectedOverlay.shadowOffsetY} onChange={(e) => update({ shadowOffsetY: Number(e.target.value) })} className="w-full accent-blue-500" />
-                                            </div>
-                                        </div>
+                            <ControlSection title="Stroke & Border" icon={Shield} description="Add crisp borders around text for busy artwork.">
+                                <Toggle checked={selectedOverlay.strokeEnabled ?? false} onChange={() => update({ strokeEnabled: !selectedOverlay.strokeEnabled })} label="Text border / stroke" />
+                                {selectedOverlay.strokeEnabled && (
+                                    <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-950/50 p-3">
+                                        <ColorField label="Stroke color" value={selectedOverlay.strokeColor || '#111827'} fallback="#111827" onChange={(value) => update({ strokeColor: value })} />
+                                        <RangeControl label="Stroke width" value={selectedOverlay.strokeWidth ?? 2} min={0.5} max={12} step={0.5} suffix="px" onChange={(value) => update({ strokeWidth: value })} />
                                     </div>
                                 )}
-                            </div>
+                            </ControlSection>
+                            </>
+                            )}
 
-                            {/* Background Section */}
-                            <div className="border-t border-neutral-800 pt-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">{(t as any).textBackground || 'Background'}</label>
-                                    <button
-                                        onClick={() => update({ bgEnabled: !selectedOverlay.bgEnabled })}
-                                        className={`w-9 h-5 rounded-full transition-colors relative ${selectedOverlay.bgEnabled ? 'bg-blue-600' : 'bg-neutral-700'}`}
-                                    >
-                                        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow ${selectedOverlay.bgEnabled ? 'left-[18px]' : 'left-0.5'}`} />
-                                    </button>
-                                </div>
+                            {activeTab === 'effects' && (
+                            <ControlSection title="Readability & Depth" icon={Sparkles} description="Add a full-cover gradient wash, text plate, or shadow to keep titles readable.">
+                                <Toggle checked={selectedOverlay.coverGradientEnabled ?? false} onChange={() => update({ coverGradientEnabled: !selectedOverlay.coverGradientEnabled })} label="Cover gradient wash" />
+                                {selectedOverlay.coverGradientEnabled && (
+                                    <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-950/50 p-3">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {COVER_GRADIENT_PRESETS.filter((preset) => preset.value !== 'none').map((preset) => (
+                                                <button
+                                                    type="button"
+                                                    key={preset.value}
+                                                    onClick={() => update({ coverGradientPreset: preset.value as CoverGradientPreset })}
+                                                    className={`overflow-hidden rounded-xl border p-2 text-left transition-all ${selectedOverlay.coverGradientPreset === preset.value ? 'border-blue-400/60 bg-blue-500/15 text-blue-100' : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200'}`}
+                                                >
+                                                    <span className="mb-1 block h-7 rounded-lg border border-white/10" style={{ background: preset.background }} />
+                                                    <span className="block truncate text-[10px] font-black uppercase tracking-wider">{preset.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <RangeControl label="Wash strength" value={selectedOverlay.coverGradientOpacity ?? 0.78} min={0.1} max={1} step={0.05} onChange={(value) => update({ coverGradientOpacity: value })} />
+                                    </div>
+                                )}
+                                <Toggle checked={selectedOverlay.bgEnabled ?? false} onChange={() => update({ bgEnabled: !selectedOverlay.bgEnabled })} label={(t as any).textBackground || 'Text background'} />
                                 {selectedOverlay.bgEnabled && (
-                                    <div className="space-y-3 pl-1">
-                                        <div>
-                                            <label className="block text-[10px] text-neutral-600 mb-1">Color</label>
-                                            <div className="flex items-center gap-2">
-                                                <input type="color" value={selectedOverlay.bgColor.startsWith('#') ? selectedOverlay.bgColor : '#000000'} onChange={(e) => update({ bgColor: e.target.value })} className="w-6 h-6 rounded cursor-pointer bg-transparent border border-neutral-700" />
-                                                <input type="text" value={selectedOverlay.bgColor} onChange={(e) => update({ bgColor: e.target.value })} className="flex-1 bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-white text-[10px] focus:outline-none" />
-                                            </div>
+                                    <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-950/50 p-3">
+                                        <ColorField label="Background color / CSS" value={selectedOverlay.bgColor || 'rgba(0,0,0,0.5)'} fallback="#000000" onChange={(value) => update({ bgColor: value })} />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <RangeControl label="Pad X" value={selectedOverlay.bgPaddingX ?? 12} min={0} max={90} suffix="px" onChange={(value) => update({ bgPaddingX: value })} />
+                                            <RangeControl label="Pad Y" value={selectedOverlay.bgPaddingY ?? 8} min={0} max={90} suffix="px" onChange={(value) => update({ bgPaddingY: value })} />
                                         </div>
-                                        <div className="flex gap-3">
-                                            <div className="flex-1">
-                                                <label className="block text-[10px] text-neutral-600 mb-1">Padding X — {selectedOverlay.bgPaddingX}px</label>
-                                                <input type="range" min={0} max={60} value={selectedOverlay.bgPaddingX} onChange={(e) => update({ bgPaddingX: Number(e.target.value) })} className="w-full accent-blue-500" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <label className="block text-[10px] text-neutral-600 mb-1">Padding Y — {selectedOverlay.bgPaddingY}px</label>
-                                                <input type="range" min={0} max={60} value={selectedOverlay.bgPaddingY} onChange={(e) => update({ bgPaddingY: Number(e.target.value) })} className="w-full accent-blue-500" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] text-neutral-600 mb-1">Radius — {selectedOverlay.bgBorderRadius}px</label>
-                                            <input type="range" min={0} max={30} value={selectedOverlay.bgBorderRadius} onChange={(e) => update({ bgBorderRadius: Number(e.target.value) })} className="w-full accent-blue-500" />
+                                        <RangeControl label="Radius" value={selectedOverlay.bgBorderRadius ?? 4} min={0} max={60} suffix="px" onChange={(value) => update({ bgBorderRadius: value })} />
+                                    </div>
+                                )}
+                                <Toggle checked={selectedOverlay.shadowEnabled ?? false} onChange={() => update({ shadowEnabled: !selectedOverlay.shadowEnabled })} label={(t as any).textShadow || 'Shadow'} />
+                                {selectedOverlay.shadowEnabled && (
+                                    <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-950/50 p-3">
+                                        <ColorField label="Shadow color" value={selectedOverlay.shadowColor || 'rgba(0,0,0,0.7)'} fallback="#000000" onChange={(value) => update({ shadowColor: value })} />
+                                        <RangeControl label="Blur" value={selectedOverlay.shadowBlur ?? 8} min={0} max={60} suffix="px" onChange={(value) => update({ shadowBlur: value })} />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <RangeControl label="Offset X" value={selectedOverlay.shadowOffsetX ?? 2} min={-40} max={40} suffix="px" onChange={(value) => update({ shadowOffsetX: value })} />
+                                            <RangeControl label="Offset Y" value={selectedOverlay.shadowOffsetY ?? 4} min={-40} max={40} suffix="px" onChange={(value) => update({ shadowOffsetY: value })} />
                                         </div>
                                     </div>
                                 )}
+                            </ControlSection>
+                            )}
                             </div>
-                        </div>
+                        </>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-neutral-600 p-8 text-center">
                             <Type className="w-10 h-10 mb-3 text-neutral-700" />
